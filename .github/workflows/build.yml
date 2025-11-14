@@ -20,7 +20,7 @@ jobs:
 
       - name: Prepare app artifact directory
         run: |
-          mkdir "PCL.Mac"
+          mkdir "PCL.Mac-artifact"
           mv build.xcarchive/Products/Applications/PCL.Mac.app "./PCL.Mac/PCL.Mac.app"
           mv build.xcarchive/dSYMs/PCL.Mac.app.dSYM ./PCL.Mac/PCL.Mac.app.dSYM
 
@@ -28,4 +28,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PCL.Mac-${{ github.sha }}
-          path: ./PCL.Mac
+          path: ./PCL.Mac-artifact
