@@ -9,22 +9,22 @@ import Foundation
 import SwiftyJSON
 
 public class ClientManifest {
+    public let gameArguments: [Argument]
+    public let jvmArguments: [Argument]
     public let assetIndex: AssetIndex
     public let downloads: Downloads
-    public let gameArguments: [Argument]
     public let id: String
-    public let jvmArguments: [Argument]
     public let libraries: [Library]
     public let logging: Logging
     public let mainClass: String
     public let type: String
     
     public init(json: JSON) {
+        self.gameArguments = json["arguments"]["game"].arrayValue.map(Argument.init(json:))
+        self.jvmArguments = json["arguments"]["jvm"].arrayValue.map(Argument.init(json:))
         self.assetIndex = AssetIndex(json: json["assetIndex"])
         self.downloads = Downloads(json: json["downloads"])
-        self.gameArguments = json["arguments"]["game"].arrayValue.map(Argument.init(json:))
         self.id = json["id"].stringValue
-        self.jvmArguments = json["arguments"]["jvm"].arrayValue.map(Argument.init(json:))
         self.libraries = json["libraries"].arrayValue.map(Library.init(json:))
         self.logging = Logging(json: json["logging"])
         self.mainClass = json["mainClass"].stringValue
@@ -104,9 +104,15 @@ public class ClientManifest {
         public let artifact: Artifact?
         public let rules: [Rule]
         public let isNativesLibrary: Bool
-        public lazy var isRulesSatisfied: Bool = {
-            return rules.allSatisfy { $0.test() }
+        
+        public lazy var groupId: String = { String(name.split(separator: ":")[0]) }()
+        public lazy var artifactId: String = { String(name.split(separator: ":")[1]) }()
+        public lazy var version: String = { String(name.split(separator: ":")[2]) }()
+        public lazy var classifier: String? = {
+            let parts: [Substring] = name.split(separator: ":")
+            return parts.count == 4 ? String(parts[3]) : nil
         }()
+        public lazy var isRulesSatisfied: Bool = { rules.allSatisfy { $0.test() } }()
         
         public init(json: JSON) {
             self.name = json["name"].stringValue
@@ -138,6 +144,7 @@ public class ClientManifest {
         public let allow: Bool
         public let osName: String?
         public let osArch: Architecture?
+        
         
         public init(json: JSON) {
             self.allow = json["action"].stringValue == "allow"
