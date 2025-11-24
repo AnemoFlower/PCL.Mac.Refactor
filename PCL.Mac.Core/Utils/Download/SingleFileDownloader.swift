@@ -32,41 +32,19 @@ public enum SingleFileDownloader {
         
         var request: URLRequest = .init(url: url)
         request.httpMethod = "GET"
-        
-        let (byteStream, response) = try await URLSession.shared.bytes(for: request)
-        guard let response = response as? HTTPURLResponse else {
-            throw DownloadError.badResponse
+        try await withCheckedThrowingContinuation { continuation in
+            let delegate: DownloadDelegate = .init(destination: destination, continuation: continuation)
+            let session: URLSession = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+            let task: URLSessionDownloadTask = session.downloadTask(with: request)
+            task.resume()
         }
-        if !(200..<300).contains(response.statusCode) {
-            throw DownloadError.badStatusCode(code: response.statusCode)
-        }
-        
-        var buffer: [UInt8] = []
-        buffer.reserveCapacity(64 * 1024)
-        let tempFile: URL = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        FileManager.default.createFile(atPath: tempFile.path, contents: nil)
-        let handle: FileHandle = try FileHandle(forWritingTo: tempFile)
-        defer {
-            try? handle.close()
-            try? FileManager.default.removeItem(at: tempFile)
-        }
-        
-        for try await byte in byteStream {
-            buffer.append(byte)
-            if buffer.count >= 64 * 1024 {
-                handle.write(Data(buffer))
-                buffer.removeAll(keepingCapacity: true)
-            }
-        }
-        handle.write(Data(buffer))
         
         // 验证 SHA-1
         if let sha1 {
-            guard try FileUtils.getSHA1(tempFile) == sha1 else {
+            guard try FileUtils.getSHA1(destination) == sha1 else {
+                try FileManager.default.removeItem(at: destination)
                 throw DownloadError.checksumMismatch
             }
         }
-        // 保证 destination 位置不存在文件
-        try FileManager.default.moveItem(at: tempFile, to: destination)
     }
 }
