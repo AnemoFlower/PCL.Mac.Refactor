@@ -25,6 +25,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         LogManager.shared.enableLogging(logsURL: AppURLs.logsDirectoryURL)
         log("App 正在启动")
         registerFont()
+        try? MinecraftVersion.loadVersionList(AppURLs.resourcesURL.appending(path: "version_list.csv"))
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
