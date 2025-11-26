@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class MinecraftVersion: Comparable, Equatable {
+public class MinecraftVersion: Comparable, Equatable, CustomStringConvertible {
     private static var versionList: [String] = []
     public let id: String
     public let index: Int
@@ -24,6 +24,8 @@ public class MinecraftVersion: Comparable, Equatable {
     public static func < (lhs: MinecraftVersion, rhs: MinecraftVersion) -> Bool {
         return lhs.index < rhs.index
     }
+    
+    public lazy var description: String = { id }()
     
     public static func loadVersionList(_ url: URL) throws {
         let content: String = try String(data: Data(contentsOf: url), encoding: .utf8).unwrap()
