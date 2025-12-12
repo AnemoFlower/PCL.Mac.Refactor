@@ -59,7 +59,7 @@ private struct RouteView: View {
         }
         .frame(height: 32)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(hovered ? Color.pclBlue.opacity(0.1) : .clear)
+        .background(hovered ? Color.color2.opacity(0.1) : .clear)
         .foregroundStyle(selected ? Color(0x1370F3) : Color(0x343D4A))
         .contentShape(Rectangle())
         .onHover { hovered = $0 }

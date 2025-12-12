@@ -40,7 +40,7 @@ struct TitleBarView: View {
         private let labelColor: Color
         private let backgroundColor: Color
         
-        init(_ label: String, labelColor: Color = .pclBlue, backgroundColor: Color = .white) {
+        init(_ label: String, labelColor: Color = .color2, backgroundColor: Color = .white) {
             self.label = label
             self.labelColor = labelColor
             self.backgroundColor = backgroundColor
@@ -102,7 +102,7 @@ private struct PageButton: View {
     }
     
     private var foregroundColor: Color {
-        isRoot ? .pclBlue : .white
+        isRoot ? .color2 : .white
     }
     
     private var backgroundColor: Color {

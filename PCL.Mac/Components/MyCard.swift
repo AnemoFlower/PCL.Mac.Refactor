@@ -44,7 +44,7 @@ struct MyCard<Content: View>: View {
                     }
                 }
             }
-            .foregroundStyle(hovered ? Color.pclBlue : .init(0x343D4A))
+            .foregroundStyle(hovered ? Color.color2 : .init(0x343D4A))
             .frame(height: titled ? 12 : 0)
             .frame(maxWidth: .infinity)
             .padding(12)
