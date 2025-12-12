@@ -20,7 +20,7 @@ struct TitleBarView: View {
                     .frame(height: 19)
                     .padding(.leading, 65)
                 Badge("Mac")
-                Badge("Dev", labelColor: Color(0x343D4A), backgroundColor: Color(0x9BF00B))
+                Badge("Dev", labelColor: .color1, backgroundColor: Color(0x9BF00B))
             }
             HStack {
                 Spacer()
@@ -106,6 +106,6 @@ private struct PageButton: View {
     }
     
     private var backgroundColor: Color {
-        isRoot ? .white : (hovered ? .init(0xFFFFFF, alpha: 0.25) : .clear)
+        .white.opacity(isRoot ? 1 : hovered ? 0.25 : 0)
     }
 }
