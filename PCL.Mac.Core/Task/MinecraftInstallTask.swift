@@ -18,9 +18,11 @@ public enum MinecraftInstallTask {
     ///   - version: Minecraft 版本。
     ///   - minecraftDirectory: 实例所在的 Minecraft 目录。
     /// - Returns: 实例安装任务。
-    public static func create(name: String,
-                              version: MinecraftVersion,
-                              minecraftDirectory: URL) -> MyTask<Model> {
+    public static func create(
+        name: String,
+        version: MinecraftVersion,
+        minecraftDirectory: URL
+    ) -> MyTask<Model> {
         let model: Model = .init(
             name: name,
             version: version,
@@ -81,7 +83,13 @@ public enum MinecraftInstallTask {
     }
     
     private static func downloadAssets(task: SubTask, model: Model) async throws {
-        // TODO
+        let root: URL = URL(string: "https://resources.download.minecraft.net")!
+        let items: [DownloadItem] = model.assetIndex.objects.map { .init(
+            url: root.appending(path: "\($0.hash.prefix(2))/\($0.hash)"),
+            destination: model.minecraftDirectory.appending(path: "assets/objects").appending(path: "\($0.hash.prefix(2))/\($0.hash)"),
+            sha1: $0.hash
+        ) }
+        try await MultiFileDownloader(items: items, concurrentLimit: 64, replaceMethod: .skip, progressHandler: task.setProgress(_:)).start()
     }
     
     private static func downloadLibraries(task: SubTask, model: Model) async throws {
