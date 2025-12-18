@@ -124,5 +124,9 @@ private struct VersionView: View {
                 Spacer()
             }
         }
+        .onTapGesture {
+            TaskManager.shared.execute(task: MinecraftInstallTask.create(name: "test", version: .init(version.id), minecraftDirectory: URL(fileURLWithPath: "/tmp")))
+            AppRouter.shared.setRoot(.tasks)
+        }
     }
 }

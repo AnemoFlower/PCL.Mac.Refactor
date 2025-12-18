@@ -22,7 +22,7 @@ public enum SingleFileDownloader {
                                 progressHandler: (@MainActor (Double) -> Void)? = nil) async throws {
         // 文件已存在处理
         if FileManager.default.fileExists(atPath: destination.path) {
-            if let sha1, try FileUtils.getSHA1(destination) != sha1 {
+            if let sha1, try FileUtils.sha1(of: destination) != sha1 {
                 try FileManager.default.removeItem(at: destination)
             } else {
                 switch replaceMethod {
@@ -40,6 +40,7 @@ public enum SingleFileDownloader {
         
         var request: URLRequest = .init(url: url)
         request.httpMethod = "GET"
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let task: URLSessionDownloadTask = session.downloadTask(with: request)
@@ -49,7 +50,7 @@ public enum SingleFileDownloader {
         
         // 验证 SHA-1
         if let sha1 {
-            guard try FileUtils.getSHA1(destination) == sha1 else {
+            guard try FileUtils.sha1(of: destination) == sha1 else {
                 try FileManager.default.removeItem(at: destination)
                 throw DownloadError.checksumMismatch
             }
