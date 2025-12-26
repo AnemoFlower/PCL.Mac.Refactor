@@ -1,5 +1,5 @@
 //
-//  MinecraftDirectory.swift
+//  MinecraftRepository.swift
 //  PCL.Mac
 //
 //  Created by 温迪 on 2025/12/26.
@@ -7,8 +7,8 @@
 
 import Foundation
 
-/// Minecraft 目录（`.minecraft`）。
-public class MinecraftDirectory: ObservableObject, Codable {
+/// Minecraft 仓库（`.minecraft`）。
+public class MinecraftRepository: ObservableObject, Codable {
     @Published public var name: String
     @Published public var url: URL
     @Published public var instances: [Instance]?

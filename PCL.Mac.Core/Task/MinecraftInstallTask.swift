@@ -21,12 +21,12 @@ public enum MinecraftInstallTask {
     public static func create(
         name: String,
         version: MinecraftVersion,
-        directory: MinecraftDirectory
+        repository: MinecraftRepository
     ) -> MyTask<Model> {
         let model: Model = .init(
             name: name,
             version: version,
-            directory: directory
+            repository: repository
         )
         return .init(
             name: "\(name) 安装", model: model,
@@ -60,7 +60,7 @@ public enum MinecraftInstallTask {
     }
     
     private static func downloadAssetIndex(task: SubTask, model: Model) async throws {
-        let destination: URL = model.directory.assetsURL
+        let destination: URL = model.repository.assetsURL
             .appending(path: "indexes/\(model.manifest.assetIndex.id).json")
         try await SingleFileDownloader.download(
             url: model.manifest.assetIndex.url,
@@ -86,7 +86,7 @@ public enum MinecraftInstallTask {
         let root: URL = URL(string: "https://resources.download.minecraft.net")!
         let items: [DownloadItem] = model.assetIndex.objects.map { .init(
             url: root.appending(path: "\($0.hash.prefix(2))/\($0.hash)"),
-            destination: model.directory.assetsURL.appending(path: "objects/\($0.hash.prefix(2))/\($0.hash)"),
+            destination: model.repository.assetsURL.appending(path: "objects/\($0.hash.prefix(2))/\($0.hash)"),
             sha1: $0.hash
         ) }
         try await MultiFileDownloader(items: items, concurrentLimit: 64, replaceMethod: .skip, progressHandler: task.setProgress(_:)).start()
@@ -95,7 +95,7 @@ public enum MinecraftInstallTask {
     private static func downloadLibraries(task: SubTask, model: Model) async throws {
         let items: [DownloadItem] = (model.manifest.getLibraries() + model.manifest.getNatives())
             .compactMap(\.artifact)
-            .map { DownloadItem(url: $0.url, destination: model.directory.librariesURL.appending(path: $0.path), sha1: $0.sha1) }
+            .map { DownloadItem(url: $0.url, destination: model.repository.librariesURL.appending(path: $0.path), sha1: $0.sha1) }
         try await MultiFileDownloader(items: items, concurrentLimit: 64, replaceMethod: .skip, progressHandler: task.setProgress(_:)).start()
     }
     
@@ -103,16 +103,16 @@ public enum MinecraftInstallTask {
         public let name: String
         public let version: MinecraftVersion
         public let runningDirectory: URL
-        public let directory: MinecraftDirectory
+        public let repository: MinecraftRepository
         
         public var manifest: ClientManifest!
         public var assetIndex: AssetIndex!
         
-        public init(name: String, version: MinecraftVersion, directory: MinecraftDirectory) {
+        public init(name: String, version: MinecraftVersion, repository: MinecraftRepository) {
             self.name = name
             self.version = version
-            self.runningDirectory = directory.versionsURL.appending(path: name)
-            self.directory = directory
+            self.runningDirectory = repository.versionsURL.appending(path: name)
+            self.repository = repository
         }
     }
 }

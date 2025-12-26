@@ -125,8 +125,8 @@ private struct VersionView: View {
             }
         }
         .onTapGesture {
-            let directory: MinecraftDirectory = .init(name: "Test", url: URL(fileURLWithPath: "/tmp"))
-            TaskManager.shared.execute(task: MinecraftInstallTask.create(name: "test", version: .init(version.id), directory: directory))
+            let repository: MinecraftRepository = .init(name: "Test", url: URL(fileURLWithPath: "/tmp"))
+            TaskManager.shared.execute(task: MinecraftInstallTask.create(name: "test", version: .init(version.id), repository: repository))
             AppRouter.shared.setRoot(.tasks)
         }
     }
