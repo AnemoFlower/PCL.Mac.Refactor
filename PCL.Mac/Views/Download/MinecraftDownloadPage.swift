@@ -85,14 +85,14 @@ struct MinecraftDownloadPage: View {
     private func refresh() async throws -> VersionManifest {
         let response = try await Requests.get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
         if response.headers["Last-Modified"] == dataManager.versionsLastModified {
-            return CoreState.versionManifest
+            return CoreModel.versionManifest
         }
         await MainActor.run {
             dataManager.versionsLastModified = response.headers["Last-Modified"]
         }
-        CoreState.versionManifest = try response.decode(VersionManifest.self)
+        CoreModel.versionManifest = try response.decode(VersionManifest.self)
         try response.data.write(to: AppURLs.cacheURL.appending(path: "version_manifest.json"))
-        return CoreState.versionManifest
+        return CoreModel.versionManifest
     }
 }
 

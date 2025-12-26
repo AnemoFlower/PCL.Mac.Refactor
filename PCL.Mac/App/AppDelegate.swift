@@ -47,12 +47,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if FileManager.default.fileExists(atPath: cacheURL.path) {
                 let cachedData: Data = try .init(contentsOf: AppURLs.cacheURL.appending(path: "version_manifest.json"))
                 let manifest: VersionManifest = try JSONDecoder.shared.decode(VersionManifest.self, from: cachedData)
-                CoreState.versionManifest = manifest
+                CoreModel.versionManifest = manifest
             } else {
                 self.executeAsyncTask("拉取版本列表") {
                     let response = try await Requests.get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
                     let manifest: VersionManifest = try response.decode(VersionManifest.self)
-                    CoreState.versionManifest = manifest
+                    CoreModel.versionManifest = manifest
                     try response.data.write(to: cacheURL)
                 }
             }
