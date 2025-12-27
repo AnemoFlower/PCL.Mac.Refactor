@@ -9,13 +9,15 @@ import SwiftUI
 import Core
 
 struct LaunchSidebar: Sidebar {
-    let width: CGFloat = 240
+    @ObservedObject private var router: AppRouter = .shared
+    
+    let width: CGFloat = 285
     
     var body: some View {
         MyText("LaunchSidebar")
-        VStack {
+        VStack(spacing: 11) {
             Spacer()
-            MyButton("启动游戏") {
+            MyButton("启动游戏", subLabel: "1.21.10", type: .highlight) {
                 Task.detached {
                     let instance = try MinecraftInstance.load(from: URL(fileURLWithPath: "/tmp/versions/test"))
                     var options: LaunchOptions = .init()
@@ -27,8 +29,17 @@ struct LaunchSidebar: Sidebar {
                     let _ = try launcher.launch()
                 }
             }
-            .frame(height: 40)
-            .padding()
+            .frame(height: 50)
+            HStack(spacing: 11) {
+                MyButton("实例选择") {
+                    router.append(.instanceList)
+                }
+                MyButton("实例设置") {
+                    router.append(.instanceSettings)
+                }
+            }
+            .frame(height: 32)
         }
+        .padding(21)
     }
 }
