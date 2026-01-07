@@ -45,6 +45,7 @@ struct InstanceListPage: View {
             }
         }
         .onAppear {
+            viewModel.switchRepository(to: repository)
             if repository.instances != nil { return }
             Task {
                 do {
@@ -62,6 +63,7 @@ struct InstanceListPage: View {
 }
 
 private struct InstanceView: View {
+    @EnvironmentObject private var viewModel: InstanceViewModel
     private let id: String
     private let version: MinecraftVersion
     
@@ -71,7 +73,9 @@ private struct InstanceView: View {
     }
     
     var body: some View {
-        MyListItem {
+        MyListItem(buttons: [
+            .init("SettingsPageIcon", { viewModel.openSettings(for: id) }),
+        ]) {
             HStack {
                 Image("GrassBlock")
                     .resizable()

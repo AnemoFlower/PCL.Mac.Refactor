@@ -95,4 +95,10 @@ class InstanceViewModel: ObservableObject {
             addRepository(url: url)
         }
     }
+    
+    /// 打开实例设置。
+    /// - Parameter id: 实例的 ID。
+    public func openSettings(for id: String) {
+        AppRouter.shared.append(.instanceSettings(id))
+    }
 }
