@@ -40,12 +40,23 @@ public class LauncherConfig: Codable {
     
     public required init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.minecraftRepositories = try container.decodeIfPresent([MinecraftRepository].self, forKey: .minecraftRepositories) ?? []
-        
-        if let currentRepository = try container.decodeIfPresent(Int.self, forKey: .currentRepository) {
-            self.currentRepository = minecraftRepositories.count > currentRepository ? currentRepository : nil
+        if let minecraftRepositories = try container.decodeIfPresent([MinecraftRepository].self, forKey: .minecraftRepositories) {
+            self.minecraftRepositories = minecraftRepositories
+            if let currentRepository = try container.decodeIfPresent(Int.self, forKey: .currentRepository) {
+                self.currentRepository = minecraftRepositories.count > currentRepository ? currentRepository : nil
+            } else {
+                self.currentRepository = minecraftRepositories.isEmpty ? nil : 0
+            }
         } else {
-            self.currentRepository = minecraftRepositories.isEmpty ? nil : 0
+            log("正在设置默认目录")
+            var url: URL = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Application Support/minecraft")
+            if !FileManager.default.fileExists(atPath: url.path) { // 若官启（与 HMCL）目录不存在，使用未被隐藏且较浅的 ~/minecraft 目录
+                url = FileManager.default.homeDirectoryForCurrentUser.appending(path: "minecraft")
+            }
+            log("默认目录路径：\(url.path)")
+            self.minecraftRepositories = [.init(name: "默认目录", url: url)]
+            self.currentRepository = 0
+            try self.minecraftRepositories[0].load() // 理论上只会在第一次打开启动器时被执行
         }
         
         loadInstance: if let currentRepository = self.currentRepository {
