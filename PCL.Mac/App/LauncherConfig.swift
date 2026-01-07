@@ -50,7 +50,7 @@ public class LauncherConfig: Codable {
         } else {
             log("正在设置默认目录")
             var url: URL = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Application Support/minecraft")
-            if !FileManager.default.fileExists(atPath: url.path) { // 若官启（与 HMCL）目录不存在，使用未被隐藏且较浅的 ~/minecraft 目录
+            if !FileManager.default.fileExists(atPath: url.appending(path: "versions").path) { // 若官启（与 HMCL）目录不存在，使用未被隐藏且较浅的 ~/minecraft 目录
                 url = FileManager.default.homeDirectoryForCurrentUser.appending(path: "minecraft")
             }
             log("默认目录路径：\(url.path)")
