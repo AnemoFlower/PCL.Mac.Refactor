@@ -38,7 +38,7 @@ struct InstanceListPage: View {
             }
         }
         .onAppear {
-            viewModel.switchRepository(to: repository)
+            instanceViewModel.switchRepository(to: repository)
             if repository.instances != nil { return }
             viewModel.reloadAsync(repository)
         }
