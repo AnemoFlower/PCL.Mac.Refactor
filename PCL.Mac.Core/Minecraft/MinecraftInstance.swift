@@ -8,8 +8,12 @@
 import Foundation
 import SwiftyJSON
 
-/// Minecraft 实例的数据模型与业务逻辑。
+/// Minecraft 实例对象。
 public class MinecraftInstance {
+    /// 实例加载缓存。
+    public static var instanceCache: [MinecraftInstance] = []
+    public static let instanceCacheSize: Int = 5
+    
     public let runningDirectory: URL
     public let version: MinecraftVersion
     public let manifest: ClientManifest
@@ -34,6 +38,9 @@ public class MinecraftInstance {
     ///   - version: （可选）缓存的版本号。
     /// - Returns: 实例对象。
     public static func load(from runningDirectory: URL, version cachedVersion: MinecraftVersion? = nil) throws -> MinecraftInstance {
+        if let instance: MinecraftInstance = instanceCache.first(where: { $0.runningDirectory == runningDirectory }) {
+            return instance
+        }
         log("正在加载实例 \(runningDirectory.lastPathComponent)")
         // 加载客户端清单
         let manifestURL: URL = runningDirectory.appending(path: "\(runningDirectory.lastPathComponent).json")
@@ -55,10 +62,12 @@ public class MinecraftInstance {
                 version = .init(manifest.id)
             }
         }
-        return .init(
-            runningDirectory: runningDirectory,
-            version: version,
-            manifest: manifest
-        )
+        log("加载成功")
+        let instance: MinecraftInstance = .init(runningDirectory: runningDirectory, version: version, manifest: manifest)
+        instanceCache.append(instance)
+        if instanceCache.count >= instanceCacheSize {
+            instanceCache.removeFirst()
+        }
+        return instance
     }
 }

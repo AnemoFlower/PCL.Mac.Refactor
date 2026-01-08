@@ -36,9 +36,9 @@ class InstanceListViewModel: ObservableObject {
                 err("加载实例列表失败：\(error.localizedDescription)")
                 await MainActor.run {
                     loadingViewModel.fail(with: "加载失败：\(error.localizedDescription)")
-                    loadTask = nil
                 }
             }
+            loadTask = nil
         }
     }
     
