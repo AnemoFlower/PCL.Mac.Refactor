@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CryptoKit
 
 public enum UUIDUtils {
     /// 将 `UUID` 转换成字符串。
@@ -48,5 +49,20 @@ public enum UUIDUtils {
             throw UUIDError.invalidUUIDFormat
         }
         return uuid
+    }
+    
+    /// 符合 Bukkit 行为的离线玩家 UUID 生成器。
+    /// https://github.com/MCLF-CN/docs/issues/7
+    /// - Parameter name: 离线玩家的玩家名。
+    public static func uuid(ofOfflinePlayer name: String) -> UUID {
+        var arr: [UInt8] = Array(Insecure.MD5.hash(data: name.data(using: .utf8)!))
+        arr[6] = (arr[6] & 0x0F) | 0x30
+        arr[8] = (arr[8] & 0x3F) | 0x80
+        return UUID(uuid: (
+            arr[0], arr[1], arr[2], arr[3],
+            arr[4], arr[5], arr[6], arr[7],
+            arr[8], arr[9], arr[10], arr[11],
+            arr[12], arr[13], arr[14], arr[15]
+        ))
     }
 }

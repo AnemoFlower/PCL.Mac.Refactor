@@ -12,6 +12,12 @@ public struct PlayerProfileModel: Codable {
     public let id: UUID
     public let properties: [Property]
     
+    public init(name: String, id: UUID, properties: [Property]) {
+        self.name = name
+        self.id = id
+        self.properties = properties
+    }
+    
     public func property(ofName name: String) -> Property? {
         return properties.first(where: { $0.name == name })
     }

@@ -6,11 +6,15 @@
 //
 
 import Foundation
+import Core
 
 class AccountManager: ObservableObject {
+    public static let shared: AccountManager = .init()
+    @Published public var accounts: [Account] = []
     
-    
-    public func addOffline() {
-        
+    public func addOffline(name: String, uuid: UUID? = nil) {
+        accounts.append(OfflineAccount(name: name, uuid: uuid ?? UUIDUtils.uuid(ofOfflinePlayer: name)))
     }
+    
+    private init() {}
 }
