@@ -62,9 +62,36 @@ public class MicrosoftAuthService {
     }
     
     /// 完成后续登录步骤。
-    /// - Returns: 包含玩家档案（不包含属性）、Minecraft access token 和 OAuth refresh token 的结构体。
+    /// - Returns: 包含玩家档案（不包含属性）、Minecraft 令牌和 OAuth 刷新令牌的结构体。
     public func authenticate() async throws -> MinecraftAuthResponse {
         guard let oAuthToken, let refreshToken else {
+            throw Error.internalError
+        }
+        let xboxLiveAuthResponse: XboxLiveAuthResponse = try await authenticateXBL(with: oAuthToken)
+        let xstsAuthResponse: XboxLiveAuthResponse = try await authorizeXSTS(with: xboxLiveAuthResponse.token)
+        let minecraftToken: String = try await loginMinecraft(with: xstsAuthResponse)
+        guard let profile: PlayerProfileModel = try await getMinecraftProfile(with: minecraftToken) else {
+            throw Error.notPurchased
+        }
+        return .init(profile: profile, accessToken: minecraftToken, refreshToken: refreshToken)
+    }
+    
+    /// 刷新 Minecraft 登录信息和令牌。
+    /// - Parameter token: OAuth 刷新令牌。
+    /// - Returns: 新的 `MinecraftAuthResponse`。
+    public func refresh(token: String) async throws -> MinecraftAuthResponse {
+        let json: JSON = try await post(
+            "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
+            [
+                "client_id": clientID,
+                "refresh_token": token,
+                "grant_type": "refresh_token",
+                "scope": "XboxLive.signin offline_access"
+            ]
+        )
+        guard let oAuthToken = json["access_token"].string,
+              let refreshToken = json["refresh_token"].string else {
+            err("响应中不存在 error，但也不包含 access_token 键")
             throw Error.internalError
         }
         let xboxLiveAuthResponse: XboxLiveAuthResponse = try await authenticateXBL(with: oAuthToken)
