@@ -41,6 +41,39 @@ class AccountViewModel: ObservableObject {
             log("离线账号检查不通过：\(error.localizedDescription)")
             throw error
         }
-        manager.addOffline(name: name, uuid: try uuid.map(UUIDUtils.uuidThrowing(of:)))
+        let account: OfflineAccount = .init(name: name, uuid: try uuid.map(UUIDUtils.uuidThrowing(of:)) ?? UUIDUtils.uuid(ofOfflinePlayer: name))
+        manager.add(account: account)
+    }
+    
+    public func addMicrosoftAccount(startCompletion: @escaping (MicrosoftAuthService.AuthorizationCode) -> Void) -> Task<MicrosoftAccount, Error> {
+        Task {
+            log("开始进行微软登录")
+            let service: MicrosoftAuthService = .init()
+            let code = try await service.start()
+            log("获取设备码成功")
+            await MainActor.run {
+                startCompletion(code)
+            }
+            
+            guard let pollCount = service.pollCount,
+                  let pollInterval = service.pollInterval else {
+                err("pollCount 或 pollInterval 未被设置")
+                throw MicrosoftAuthService.Error.internalError
+            }
+            for _ in 0..<pollCount {
+                try Task.checkCancellation()
+                try await Task.sleep(seconds: Double(pollInterval))
+                if try await service.poll() {
+                    break
+                }
+            }
+            
+            let response = try await service.authenticate()
+            let account: MicrosoftAccount = .init(profile: response.profile, accessToken: response.accessToken, refreshToken: response.refreshToken)
+            await MainActor.run {
+                manager.add(account: account)
+            }
+            return account
+        }
     }
 }
