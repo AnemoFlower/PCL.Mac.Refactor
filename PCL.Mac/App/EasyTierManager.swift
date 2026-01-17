@@ -14,7 +14,10 @@ enum EasyTierManager {
     public static let easyTier: EasyTier = .init(
         coreURL: URLConstants.easyTierURL.appending(path: "easytier-core"),
         cliURL: URLConstants.easyTierURL.appending(path: "easytier-cli"),
-        logURL: URLConstants.logsDirectoryURL.appending(path: "easytier.log")
+        logURL: URLConstants.logsDirectoryURL.appending(path: "easytier.log"),
+        .p2pOnly,
+        .peer(address: "tcp://public.easytier.top:11010"),
+        .peer(address: "tcp://public2.easytier.cn:54321")
     )
     
     public static func checkEasyTier() -> Bool {

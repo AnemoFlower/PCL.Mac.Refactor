@@ -8,11 +8,18 @@
 import SwiftUI
 
 struct MultiplayerPage: View {
+    @EnvironmentObject private var viewModel: MultiplayerViewModel
+    
     var body: some View {
         CardContainer {
             MyCard("开始联机", foldable: false) {
                 VStack(spacing: 0) {
                     MultiplayerListItem("MultiplayerPageIcon", "创建房间", "创建房间并生成邀请码，与好友一起畅玩")
+                        .onTapGesture {
+                            Task {
+                                try await viewModel.startHost(serverPort: 25565)
+                            }
+                        }
                     MultiplayerListItem("IconAdd", "加入房间", "输入房主提供的邀请码，加入游戏世界")
                 }
             }
