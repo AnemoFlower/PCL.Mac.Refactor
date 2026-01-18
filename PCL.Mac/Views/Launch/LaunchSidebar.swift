@@ -11,12 +11,17 @@ import Core
 struct LaunchSidebar: Sidebar {
     @EnvironmentObject private var instanceViewModel: InstanceViewModel
     @ObservedObject private var router: AppRouter = .shared
+    @StateObject private var accountViewModel: AccountViewModel = .init()
     
     let width: CGFloat = 285
     
     var body: some View {
-        MyText("LaunchSidebar")
         VStack(spacing: 11) {
+            Spacer()
+            if let account = accountViewModel.currentAccount {
+                PlayerAvatar(account)
+                MyText(account.profile.name)
+            }
             Spacer()
             Group {
                 if let instance = instanceViewModel.currentInstance,

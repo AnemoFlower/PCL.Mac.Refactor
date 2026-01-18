@@ -18,8 +18,8 @@ public struct PlayerProfileModel: Codable {
         self.properties = properties
     }
     
-    public func property(ofName name: String) -> Property? {
-        return properties.first(where: { $0.name == name })
+    public func property(forName name: String) -> Data? {
+        return properties.first(where: { $0.name == name })?.value
     }
     
     public enum CodingKeys: CodingKey {
@@ -45,6 +45,6 @@ public struct PlayerProfileModel: Codable {
     public struct Property: Codable {
         public let name: String
         public let signature: String?
-        public let value: String
+        public let value: Data
     }
 }
