@@ -28,7 +28,7 @@ class MultiplayerViewModel: ObservableObject {
         await switchState(to: .creatingRoom)
         let code: String = RoomCode.generate()
         let server: ScaffoldingServer = .init(
-            easyTier: EasyTierManager.easyTier,
+            easyTier: EasyTierManager.shared.easyTier,
             roomCode: code,
             playerName: "Test",
             vendor: "PCL.Mac 0.1.1, EasyTier v2.5.0",

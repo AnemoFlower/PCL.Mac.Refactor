@@ -16,6 +16,9 @@ struct MultiplayerPage: View {
                 VStack(spacing: 0) {
                     MultiplayerListItem("MultiplayerPageIcon", "创建房间", "创建房间并生成邀请码，与好友一起畅玩")
                         .onTapGesture {
+                            if EasyTierManager.shared.hintInstall() {
+                                return
+                            }
                             Task {
                                 try await viewModel.startHost(serverPort: 25565)
                             }

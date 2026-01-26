@@ -10,51 +10,92 @@ import SwiftScaffolding
 import Core
 import SwiftyJSON
 
-enum EasyTierManager {
-    public static let easyTier: EasyTier = .init(
-        coreURL: URLConstants.easyTierURL.appending(path: "easytier-core"),
-        cliURL: URLConstants.easyTierURL.appending(path: "easytier-cli"),
-        logURL: URLConstants.logsDirectoryURL.appending(path: "easytier.log"),
-        .p2pOnly,
-        .peer(address: "tcp://public.easytier.top:11010"),
-        .peer(address: "tcp://public2.easytier.cn:54321")
-    )
+class EasyTierManager {
+    public static let shared: EasyTierManager = .init()
     
-    public static func checkEasyTier() -> Bool {
-        return FileUtils.isExecutable(at: easyTier.coreURL)
-            && FileUtils.isExecutable(at: easyTier.cliURL)
+    public let easyTier: EasyTier
+    
+    private let coreURL: URL = URLConstants.easyTierURL.appending(path: "easytier-core")
+    private let cliURL: URL = URLConstants.easyTierURL.appending(path: "easytier-cli")
+    private let logURL: URL = URLConstants.logsDirectoryURL.appending(path: "easytier.log")
+    
+    private let downloadItems: [ComponentType: DownloadItem]
+    
+    private init() {
+        self.downloadItems = [
+            .cli: .init(
+                url: URL(string: "https://gitee.com/yizhimcqiu/easytier-mirror/releases/download/v2.5.0/easytier-cli-macos-aarch64")!,
+                destination: cliURL,
+                sha1: "6fced91a4aeb4c9d1776704a6d00438331408056"
+            ),
+            .core: .init(
+                url: URL(string: "https://gitee.com/yizhimcqiu/easytier-mirror/releases/download/v2.5.0/easytier-core-macos-aarch64")!,
+                destination: coreURL,
+                sha1: "bcc229e65d2652e538efd59ea88e21a7e6ff2375"
+            )
+        ]
+        
+        self.easyTier = .init(
+            coreURL: coreURL,
+            cliURL: cliURL,
+            logURL: logURL,
+            .p2pOnly,
+            .peer(address: "tcp://public.easytier.top:11010"),
+            .peer(address: "tcp://public2.easytier.cn:54321")
+        )
     }
     
-    public static func createEasyTierDownloadTask() async throws -> MyTask<EmptyModel> {
-        let json: JSON = try await Requests.get("https://api.ceciliastudio.top/easytier/download_url?arch=arm64").json()
-        if let error = json["error"].string {
-            throw SimpleError("API 调用失败：\(error)")
+    /// 判断是否已经安装 EasyTier。
+    public func isInstalled() -> Bool {
+        return checkSingle(type: .cli) && checkSingle(type: .core)
+    }
+    
+    /// 如果没有安装 EasyTier，提示用户安装。
+    /// - Returns: 是否未安装 EasyTier。
+    public func hintInstall() -> Bool {
+        if isInstalled() { return false }
+        log("用户未安装 EasyTier")
+        Task {
+            if await MessageBoxManager.shared.showText(
+                title: "错误",
+                content: "你需要安装 EasyTier 才能使用这个功能！",
+                level: .error,
+                .init(id: 1, label: "安装", type: .highlight),
+                .init(id: 0, label: "取消", type: .normal)
+            ) == 1 {
+                let task: MyTask = makeInstallTask()
+                await MainActor.run {
+                    TaskManager.shared.execute(task: task)
+                    AppRouter.shared.append(.tasks)
+                }
+            }
         }
-        guard let coreURL: URL = json["data"]["easytier-core"]["url"].url,
-              let cliURL: URL = json["data"]["easytier-cli"]["url"].url else {
-            err("/easytier/download_url 返回了未知的响应格式：\(json.rawString([:]) ?? "")")
-            throw SimpleError("API 返回了未知的响应格式。")
-        }
-        let coreDownloadItem: DownloadItem = .init(
-            url: coreURL,
-            destination: easyTier.coreURL,
-            sha1: json["data"]["easytier-core"]["sha1"].string
-        )
-        let cliDownloadItem: DownloadItem = .init(
-            url: cliURL,
-            destination: easyTier.cliURL,
-            sha1: json["data"]["easytier-cli"]["sha1"].string
-        )
-        
+        return true
+    }
+    
+    /// 创建一个安装任务。
+    public func makeInstallTask() -> MyTask<EmptyModel> {
+        let cliDownloadItem: DownloadItem = downloadItems[.cli]!
+        let coreDownloadItem: DownloadItem = downloadItems[.core]!
         return .init(
-            name: "下载 EasyTier",
-            model: .init(),
-            .init(0, "下载 easytier-core") { task, _ in
-                try await SingleFileDownloader.download(coreDownloadItem, replaceMethod: .skip, progressHandler: task.setProgress(_:))
-            },
+            name: "安装 EasyTier",
             .init(0, "下载 easytier-cli") { task, _ in
                 try await SingleFileDownloader.download(cliDownloadItem, replaceMethod: .skip, progressHandler: task.setProgress(_:))
+                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: cliDownloadItem.destination.path)
+            },
+            .init(0, "下载 easytier-core") { task, _ in
+                try await SingleFileDownloader.download(coreDownloadItem, replaceMethod: .skip, progressHandler: task.setProgress(_:))
+                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: coreDownloadItem.destination.path)
             }
         )
+    }
+    
+    public enum ComponentType {
+        case cli, core
+    }
+    
+    private func checkSingle(type: ComponentType) -> Bool {
+        let item: DownloadItem = downloadItems[type]!
+        return FileUtils.isExecutable(at: item.destination) && (try? FileUtils.sha1(of: item.destination)) == item.sha1
     }
 }
