@@ -19,9 +19,7 @@ struct MultiplayerPage: View {
                             if EasyTierManager.shared.hintInstall() {
                                 return
                             }
-                            Task {
-                                try await viewModel.startHost(serverPort: 25565)
-                            }
+                            viewModel.startHost(serverPort: 25565)
                         }
                     MultiplayerListItem("IconAdd", "加入房间", "输入房主提供的邀请码，加入游戏世界")
                 }
