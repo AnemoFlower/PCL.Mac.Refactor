@@ -12,17 +12,38 @@ struct MultiplayerPage: View {
     
     var body: some View {
         CardContainer {
-            MyCard("开始联机", foldable: false) {
-                VStack(spacing: 0) {
-                    MultiplayerListItem("MultiplayerPageIcon", "创建房间", "创建房间并生成邀请码，与好友一起畅玩")
-                        .onTapGesture {
-                            if EasyTierManager.shared.hintInstall() {
-                                return
-                            }
-                            viewModel.startHost(serverPort: 25565)
+            switch viewModel.state {
+            case .ready: readyBody
+            case .searchingMinecraft: EmptyView()
+            case .creatingRoom: EmptyView()
+            case .hostReady(_): EmptyView()
+            case .joiningRoom: EmptyView()
+            case .memberReady(_): EmptyView()
+            }
+        }
+    }
+    
+    private var readyBody: some View {
+        MyCard("开始联机", foldable: false) {
+            VStack(spacing: 0) {
+                MultiplayerListItem("MultiplayerPageIcon", "创建房间", "创建房间并生成邀请码，与好友一起畅玩")
+                    .onTapGesture {
+                        if EasyTierManager.shared.hintInstall() {
+                            return
                         }
-                    MultiplayerListItem("IconAdd", "加入房间", "输入房主提供的邀请码，加入游戏世界")
-                }
+                        viewModel.startHost(serverPort: 25565)
+                    }
+                MultiplayerListItem("IconAdd", "加入房间", "输入房主提供的邀请码，加入游戏世界")
+                    .onTapGesture {
+                        if EasyTierManager.shared.hintInstall() {
+                            return
+                        }
+                        Task {
+                            if let roomCode: String = await MessageBoxManager.shared.showInput(title: "输入房间码", placeholder: "U/XXXX-XXXX-XXXX-XXXX") {
+                                viewModel.join(roomCode: roomCode, playerName: "foobar")
+                            }
+                        }
+                    }
             }
         }
     }
