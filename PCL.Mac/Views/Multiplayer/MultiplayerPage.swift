@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftScaffolding
+import Core
 
 struct MultiplayerPage: View {
     @EnvironmentObject private var viewModel: MultiplayerViewModel
@@ -40,6 +41,7 @@ struct MultiplayerPage: View {
                             return
                         }
                         Task {
+                            try await checkDisclaimer()
                             guard await MessageBoxManager.shared.showText(
                                 title: "开启房间",
                                 content: "请按照以下步骤操作：\n   1. 进入世界，按下 ESC\n    2. 点击 “对局域网开放” > “创建局域网世界”\n    3. 回到启动器，点击 “确定” 并输入聊天栏中的端口号",
@@ -62,6 +64,7 @@ struct MultiplayerPage: View {
                             return
                         }
                         Task {
+                            try await checkDisclaimer()
                             if let roomCode: String = await MessageBoxManager.shared.showInput(title: "输入房间码", placeholder: "U/XXXX-XXXX-XXXX-XXXX") {
                                 if RoomCode.isValid(code: roomCode) {
                                     viewModel.join(roomCode: roomCode)
@@ -136,6 +139,21 @@ struct MultiplayerPage: View {
                 }
             }
         }
+    }
+    
+    private func checkDisclaimer() async throws {
+        if LauncherConfig.shared.multiplayerDisclaimerAgreed { return }
+        if await MessageBoxManager.shared.showText(
+            title: "免责声明",
+            content: "在多人联机过程中，您须严格遵守所在国家和地区的相关法律法规。因违法使用本功能导致的后果将由用户自行承担。\n\n点击“同意”即表示您已阅读并同意上述全部内容。",
+            level: .info,
+            .init(id: 0, label: "不同意", type: .red),
+            .init(id: 1, label: "同意", type: .highlight)
+        ) == 0 {
+            AppRouter.shared.setRoot(.launch)
+            throw SimpleError("用户未同意免责声明")
+        }
+        LauncherConfig.shared.multiplayerDisclaimerAgreed = true
     }
 }
 
