@@ -192,16 +192,15 @@ class MultiplayerViewModel: ObservableObject {
             try Task.checkCancellation()
             try await client.heartbeat()
         } catch is CancellationError {
+        } catch RoomError.roomClosed {
+            _ = await MessageBoxManager.shared.showText(
+                title: "房间已被关闭",
+                content: "房间连接中断，可能是由于房间被关闭或网络不稳定"
+            )
+            await leave()
         } catch {
             log("发送心跳包失败：\(error.localizedDescription)")
-            if let error = error as? ConnectionError, error == .cancelled {
-                _ = await MessageBoxManager.shared.showText(
-                    title: "连接中断",
-                    content: "房间连接中断，可能是由于房间被关闭或网络不稳定"
-                )
-            } else {
-                await showError(title: "发生未知错误", body: "同步数据失败：\(error.localizedDescription)")
-            }
+            await showError(title: "发生未知错误", body: "同步数据失败：\(error.localizedDescription)")
             await leave()
         }
     }
