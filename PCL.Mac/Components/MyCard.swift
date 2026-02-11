@@ -75,7 +75,7 @@ struct MyCard<Content: View>: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         showContent = false
                     }
-                    internalContentHeight = min(2000, contentHeight) // 控制回弹上限
+                    internalContentHeight = min(1000, contentHeight) // 控制回弹上限
                     withAnimation(.spring(response: 0.35)) {
                         internalContentHeight = 0
                     }

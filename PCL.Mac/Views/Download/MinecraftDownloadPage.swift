@@ -88,20 +88,12 @@ private struct VersionView: View {
     var body: some View {
         MyListItem(.init(image: version.type.icon, name: version.id, description: prefix + Self.dateFormatter.string(from: version.releaseTime)))
         .onTapGesture {
-            guard let repository = viewModel.currentRepository else {
+            guard viewModel.currentRepository != nil else {
                 warn("试图安装 \(version.id)，但没有设置游戏仓库")
                 hint("请先添加一个游戏目录！", type: .critical)
                 return
             }
-            let id: String = version.id
-            let version: MinecraftVersion = .init(version.id)
-            TaskManager.shared.execute(task: MinecraftInstallTask.create(name: id, version: version, repository: repository) { instance in
-                viewModel.switchInstance(to: instance, repository)
-                if AppRouter.shared.getLast() == .tasks {
-                    AppRouter.shared.removeLast()
-                }
-            })
-            AppRouter.shared.append(.tasks)
+            AppRouter.shared.append(.minecraftInstallOptions(version: .init(version.id)))
         }
     }
 }

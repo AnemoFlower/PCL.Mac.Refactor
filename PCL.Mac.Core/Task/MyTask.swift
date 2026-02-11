@@ -33,7 +33,7 @@ public class MyTask<Model: TaskModel>: ObservableObject, Identifiable {
     private let model: Model
     private var cancellables: [AnyCancellable] = []
     
-    private init(name: String, model: Model, _ subTasks: [SubTask]) {
+    public init(name: String, model: Model, _ subTasks: [SubTask]) {
         self.name = name
         self.model = model
         self.subTasks = subTasks

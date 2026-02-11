@@ -12,7 +12,7 @@ struct MyList: View {
     private let onSelect: ((Int) -> Void)?
     @State private var selected: Int?
     
-    init(items: [ListItem], onSelect: ((Int) -> Void)? = nil) {
+    init(_ items: [ListItem], onSelect: ((Int) -> Void)? = nil) {
         self.items = items
         self.onSelect = onSelect
     }
@@ -23,7 +23,7 @@ struct MyList: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             ForEach(0..<items.count, id: \.self) { index in
                 MyListItem(items[index], selected: selected == index)
                     .onTapGesture {

@@ -18,12 +18,14 @@ public enum MinecraftInstallTask {
     ///   - name: 实例名。
     ///   - version: Minecraft 版本。
     ///   - minecraftDirectory: 实例所在的 Minecraft 目录。
+    ///   - modLoader: 需要附加的模组加载器。
     ///   - completion: 任务完成回调，会在主线程执行。
     /// - Returns: 实例安装任务。
     public static func create(
         name: String,
         version: MinecraftVersion,
         repository: MinecraftRepository,
+        modLoader: ModLoader?,
         completion: ((MinecraftInstance) -> Void)? = nil
     ) -> MyTask<Model> {
         let model: Model = .init(
@@ -31,8 +33,7 @@ public enum MinecraftInstallTask {
             version: version,
             repository: repository
         )
-        return .init(
-            name: "\(name) 安装", model: model,
+        var subTasks: [SubTask] = [
             .init(0, "下载客户端 JSON 文件") { task, model in
                 guard let versionManifest = CoreState.versionManifest else {
                     err("CoreState.versionManifest 为空")
@@ -45,38 +46,41 @@ public enum MinecraftInstallTask {
                     progressHandler: task.setProgress(_:)
                 )
                 model.manifest = manifest
-                model.mappedManifest = NativesMapper.map(manifest)
             },
-            .init(1, "下载资源索引文件") { task, model in
+            // Mod Loader
+            .init(3, "__map_manifest", display: false) { task, model in
+                model.mappedManifest = NativesMapper.map(model.manifest)
+            },
+            .init(3, "下载资源索引文件") { task, model in
                 let assetIndex: AssetIndex = try await downloadAssetIndex(
-                    assetIndex: model.mappedManifest.assetIndex,
+                    assetIndex: model.manifest.assetIndex,
                     repository: model.repository,
                     progressHandler: task.setProgress(_:)
                 )
                 model.assetIndex = assetIndex
             },
-            .init(2, "下载客户端本体") { task, model in
+            .init(4, "下载客户端本体") { task, model in
                 try await downloadClient(
                     clientDownload: model.mappedManifest.downloads.client,
                     runningDirectory: model.runningDirectory,
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(2, "下载散列资源文件") { task, model in
+            .init(4, "下载散列资源文件") { task, model in
                 try await downloadAssets(
                     assetIndex: model.assetIndex,
                     repository: model.repository,
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(2, "下载依赖库文件") { task, model in
+            .init(4, "下载依赖库文件") { task, model in
                 try await downloadLibraries(
                     manifest: model.mappedManifest,
                     repository: model.repository,
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(3, "解压本地库文件", display: version < .init("1.19.1")) { task, model in
+            .init(5, "解压本地库文件", display: version < .init("1.19.1")) { task, model in
                 try await extractNatives(
                     manifest: model.mappedManifest,
                     runningDirectory: model.runningDirectory,
@@ -84,7 +88,7 @@ public enum MinecraftInstallTask {
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(4, "__completion", display: false) { _, _ in
+            .init(6, "__completion", display: false) { _, _ in
                 let instance: MinecraftInstance = .init(
                     runningDirectory: repository.versionsURL.appending(path: name),
                     version: version,
@@ -96,7 +100,28 @@ public enum MinecraftInstallTask {
                     completion?(instance)
                 }
             }
-        )
+        ]
+        
+        if let modLoader {
+            switch modLoader {
+            case .fabric(let loaderVersion):
+                subTasks.insert(
+                    .init(1, "安装 Fabric Loader") { task, model in
+                        let manifest: ClientManifest = try await downloadFabricManifest(
+                            version: version,
+                            repository: repository,
+                            runningDirectory: model.runningDirectory,
+                            loaderVersion: loaderVersion,
+                            progressHandler: task.setProgress(_:)
+                        )
+                        model.manifest = manifest
+                    },
+                    at: 2
+                )
+            }
+        }
+        
+        return .init(name: "\(name) 安装", model: model, subTasks)
     }
     
     /// 补全实例资源文件。
@@ -163,6 +188,33 @@ public enum MinecraftInstallTask {
             progressHandler: progressHandler
         )
         return try JSONDecoder.shared.decode(ClientManifest.self, from: Data(contentsOf: destination))
+    }
+    
+    private static func downloadFabricManifest(
+        version: MinecraftVersion,
+        repository: MinecraftRepository,
+        runningDirectory: URL,
+        loaderVersion: String,
+        progressHandler: @MainActor @escaping (Double) -> Void
+    ) async throws -> ClientManifest {
+        let manifestURL: URL = runningDirectory.appending(path: "\(runningDirectory.lastPathComponent).json")
+        let parentURL: URL = runningDirectory.appending(path: ".parent/\(version).json")
+        if !FileManager.default.fileExists(atPath: parentURL.path) {
+            try FileManager.default.createDirectory(at: runningDirectory.appending(path: ".parent"), withIntermediateDirectories: false)
+            try FileManager.default.moveItem(at: manifestURL, to: parentURL)
+        }
+        if FileManager.default.fileExists(atPath: manifestURL.path) {
+            try FileManager.default.removeItem(at: manifestURL)
+        }
+        let url: URL = .init(string: "https://meta.fabricmc.net/v2/versions/loader/\(version)/\(loaderVersion)/profile/json")!
+        try await SingleFileDownloader.download(
+            url: url,
+            destination: manifestURL,
+            sha1: nil,
+            replaceMethod: .throw,
+            progressHandler: progressHandler
+        )
+        return try JSONDecoder.shared.decode(ClientManifest.self, from: Data(contentsOf: manifestURL))
     }
     
     private static func downloadAssetIndex(
@@ -276,5 +328,9 @@ public enum MinecraftInstallTask {
             self.runningDirectory = repository.versionsURL.appending(path: name)
             self.repository = repository
         }
+    }
+    
+    public enum ModLoader {
+        case fabric(version: String)
     }
 }
