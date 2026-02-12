@@ -23,14 +23,25 @@ struct MyCard<Content: View>: View {
     @State private var lastClick: Date = .distantPast
     private let title: String
     private let foldable: Bool
+    private let initialFolded: Bool?
     private let titled: Bool
     private let limitHeight: Bool
     private let padding: CGFloat
     private let content: () -> Content
     
-    init(_ title: String, foldable: Bool = true, titled: Bool = true, limitHeight: Bool = true, padding: CGFloat = 18, @ViewBuilder _ content: @escaping () -> Content) {
+    /// 创建一个卡片视图。
+    /// - Parameters:
+    ///   - title: 卡片的标题。在 `titled` 为 `false` 时，该参数会被忽略。
+    ///   - foldable: 卡片是否可被折叠。当 `folded` 未被指定时，卡片默认不会被折叠。
+    ///   - folded: 卡片的初始折叠状态。
+    ///   - titled: 卡片是否拥有标题栏。当 `folded` 未被指定时，卡片默认不会被折叠。
+    ///   - limitHeight: 是否限制卡片高度。若该参数为 `false`，请手动设置卡片高度。
+    ///   - padding: 卡片的内边距。
+    ///   - content: 卡片内容。
+    init(_ title: String, foldable: Bool = true, folded: Bool? = nil, titled: Bool = true, limitHeight: Bool = true, padding: CGFloat = 18, @ViewBuilder _ content: @escaping () -> Content) {
         self.title = title
         self.foldable = foldable && titled
+        self.initialFolded = folded
         self.titled = titled
         self.limitHeight = limitHeight
         self.padding = padding
@@ -67,6 +78,9 @@ struct MyCard<Content: View>: View {
                     folded = false
                     showContent = true
                     withAnimation(.linear(duration: 0.2)) {
+                        internalContentHeight = min(1000, contentHeight)
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         internalContentHeight = contentHeight
                     }
                 } else {
@@ -121,10 +135,14 @@ struct MyCard<Content: View>: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(index ?? 0) * 0.04 + 0.4) {
                 appearFinished = true
             }
-            if !foldable || !titled {
-                folded = false
-                showContent = true
-                internalContentHeight = contentHeight
+            if let initialFolded {
+                folded = initialFolded
+            } else {
+                if !foldable || !titled {
+                    folded = false
+                    showContent = true
+                    internalContentHeight = contentHeight
+                }
             }
         }
     }
