@@ -21,7 +21,7 @@ struct InstanceListPage: View {
         VStack {
             if let instances = repository.instances {
                 CardContainer {
-                    if let errorInstances = repository.errorInstances {
+                    if let errorInstances = repository.errorInstances, !errorInstances.isEmpty {
                         MyCard("错误的实例") {
                             VStack(spacing: 0) {
                                 ForEach(errorInstances, id: \.name) { instance in

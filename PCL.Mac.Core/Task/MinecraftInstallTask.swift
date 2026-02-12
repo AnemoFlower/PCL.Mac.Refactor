@@ -114,7 +114,7 @@ public enum MinecraftInstallTask {
                             loaderVersion: loaderVersion,
                             progressHandler: task.setProgress(_:)
                         )
-                        model.manifest = manifest
+                        model.manifest = manifest.merge(to: model.manifest)
                     },
                     at: 2
                 )

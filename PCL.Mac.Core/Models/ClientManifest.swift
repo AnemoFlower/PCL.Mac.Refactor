@@ -12,8 +12,8 @@ import SwiftyJSON
 public class ClientManifest: Decodable {
     public let gameArguments: [Argument]
     public let jvmArguments: [Argument]
-    public let assetIndex: AssetIndex
-    public let downloads: Downloads
+    public let assetIndex: AssetIndex!
+    public let downloads: Downloads!
     public let id: String
     public let javaVersion: JavaVersion
     public let libraries: [Library]
@@ -36,8 +36,8 @@ public class ClientManifest: Decodable {
     public init(
         gameArguments: [Argument],
         jvmArguments: [Argument],
-        assetIndex: AssetIndex,
-        downloads: Downloads,
+        assetIndex: AssetIndex?,
+        downloads: Downloads?,
         id: String,
         javaVersion: JavaVersion,
         libraries: [Library],
@@ -76,8 +76,8 @@ public class ClientManifest: Decodable {
             self.gameArguments = try argumentsContainer.decode([Argument].self, forKey: .game)
             self.jvmArguments = try argumentsContainer.decode([Argument].self, forKey: .jvm)
         }
-        self.assetIndex = try container.decode(AssetIndex.self, forKey: .assetIndex)
-        self.downloads = try container.decode(Downloads.self, forKey: .downloads)
+        self.assetIndex = try container.decodeIfPresent(AssetIndex.self, forKey: .assetIndex)
+        self.downloads = try container.decodeIfPresent(Downloads.self, forKey: .downloads)
         self.id = try container.decode(String.self, forKey: .id)
         self.javaVersion = try container.decodeIfPresent(JavaVersion.self, forKey: .javaVersion) ?? .init(component: "jre-legacy", majorVersion: 8)
         self.libraries = try container.decode([Library].self, forKey: .libraries)
@@ -173,7 +173,7 @@ public class ClientManifest: Decodable {
         public let isNativesLibrary: Bool
         
         private enum CodingKeys: String, CodingKey {
-            case name, downloads, natives, rules
+            case name, downloads, natives, rules, url, sha1, size
         }
         
         private enum DownloadsCodingKeys: String, CodingKey {
@@ -202,7 +202,17 @@ public class ClientManifest: Decodable {
             self.isNativesLibrary = container.contains(.natives)
             let downloadsContainer = try? container.nestedContainer(keyedBy: DownloadsCodingKeys.self, forKey: .downloads)
             if !isNativesLibrary {
-                self.artifact = try downloadsContainer.unwrap("该支持库没有 artifact。").decode(Artifact.self, forKey: .artifact)
+                if let url: URL = try container.decodeIfPresent(URL.self, forKey: .url) {
+                    let path: String = MavenCoordinateUtils.path(of: name)
+                    self.artifact = .init(
+                        path: path,
+                        sha1: try container.decodeIfPresent(String.self, forKey: .sha1),
+                        size: try container.decodeIfPresent(Int.self, forKey: .size),
+                        url: url.appending(path: path)
+                    )
+                } else {
+                    self.artifact = try downloadsContainer.unwrap("该支持库没有 artifact。").decode(Artifact.self, forKey: .artifact)
+                }
             } else {
                 let natives: [String: String] = try container.decode([String: String].self, forKey: .natives)
                 if let key = natives["osx"] {
@@ -329,5 +339,45 @@ public class ClientManifest: Decodable {
     /// 创建一个新清单，继承本清单的所有属性，并使用指定的 libraries。
     public func setLibraries(to libraries: [Library]) -> ClientManifest {
         return .init(gameArguments: gameArguments, jvmArguments: jvmArguments, assetIndex: assetIndex, downloads: downloads, id: id, javaVersion: javaVersion, libraries: libraries, logging: logging, mainClass: mainClass, type: type, inheritsFrom: inheritsFrom)
+    }
+}
+
+
+// MARK: - Modded 实例处理
+
+public extension ClientManifest {
+    func merge(to baseManifest: ClientManifest) -> ClientManifest {
+        var librarySet: Set<HashableLibrary> = []
+        let libraries: [Library] = (libraries + baseManifest.libraries)
+            .filter { librarySet.insert(.init(from: $0)).inserted }
+        librarySet.removeAll()
+        
+        return .init(
+            gameArguments: baseManifest.gameArguments + gameArguments,
+            jvmArguments: baseManifest.jvmArguments + jvmArguments,
+            assetIndex: baseManifest.assetIndex,
+            downloads: baseManifest.downloads,
+            id: id,
+            javaVersion: baseManifest.javaVersion,
+            libraries: libraries,
+            logging: baseManifest.logging,
+            mainClass: mainClass,
+            type: baseManifest.type,
+            inheritsFrom: nil
+        )
+    }
+    
+    private struct HashableLibrary: Hashable {
+        private let groupId: String
+        private let artifactId: String
+        private let classifier: String?
+        private let isNativesLibrary: Bool
+        
+        public init(from library: Library) {
+            self.groupId = library.groupId
+            self.artifactId = library.artifactId
+            self.classifier = library.classifier
+            self.isNativesLibrary = library.isNativesLibrary
+        }
     }
 }

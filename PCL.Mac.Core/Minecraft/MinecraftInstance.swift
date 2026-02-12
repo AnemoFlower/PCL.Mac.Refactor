@@ -119,7 +119,14 @@ public class MinecraftInstance {
         guard FileManager.default.fileExists(atPath: manifestURL.path) else { throw MinecraftError.missingManifest }
         let manifest: ClientManifest
         do {
-            manifest = try JSONDecoder.shared.decode(ClientManifest.self, from: Data(contentsOf: manifestURL))
+            let manifest1: ClientManifest = try JSONDecoder.shared.decode(ClientManifest.self, from: Data(contentsOf: manifestURL))
+            if let baseId: String = manifest1.inheritsFrom {
+                let baseURL: URL = runningDirectory.appending(path: ".parent/\(baseId).json")
+                let baseManifest: ClientManifest = try JSONDecoder.shared.decode(ClientManifest.self, from: Data(contentsOf: baseURL))
+                manifest = manifest1.merge(to: baseManifest)
+            } else {
+                manifest = manifest1
+            }
         } catch {
             err("加载客户端清单失败：\(error)")
             throw MinecraftError.unknownManifestFormat
