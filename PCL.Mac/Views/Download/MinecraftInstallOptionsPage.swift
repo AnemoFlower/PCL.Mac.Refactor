@@ -37,6 +37,7 @@ struct MinecraftInstallOptionsPage: View {
                 }
                 .padding(.bottom, 40)
                 ModLoaderCard(.fabric, version, $loader)
+                    .cardIndex(1)
                 Spacer()
             }
             .padding(EdgeInsets(top: 10, leading: 25, bottom: 25, trailing: 25))
@@ -79,11 +80,34 @@ private struct ModLoaderCard: View {
     }
     
     var body: some View {
-        MyCard("\(type)\t\(loadState)", foldable: loadState == .finished, folded: true) {
-            if let versions {
-                MyList(versions.map { ListItem(image: iconName, name: $0.id, description: $0.stable ? "稳定版" : "测试版") }) { index in
-                    currentLoader = .fabric(version: versions[index].id)
+        MyCard("", titled: false, limitHeight: false, padding: 0) {
+            ZStack(alignment: .topLeading) {
+                MyCard(type.description, foldable: loadState == .finished, folded: true) {
+                    if let versions {
+                        MyList(versions.map { ListItem(image: iconName, name: $0.id, description: $0.beta ? "测试版" : "稳定版") }) { index in
+                            if let index {
+                                currentLoader = .fabric(version: versions[index].id)
+                            } else {
+                                currentLoader = nil
+                            }
+                        }
+                    }
                 }
+                .disableCardAppearAnimation()
+                HStack(spacing: 7) {
+                    if let currentLoader, case .fabric(let version) = currentLoader {
+                        Image(iconName)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 18)
+                        MyText(version, color: .colorGray1)
+                    } else {
+                        MyText(loadState.description, color: .colorGray4)
+                    }
+                }
+                .padding(.leading, 300)
+                .padding(.top, 10)
+                .allowsHitTesting(false)
             }
         }
         .task(id: type) {
@@ -102,7 +126,8 @@ private struct ModLoaderCard: View {
             switch type {
             case .fabric:
                 let versions: [Version] = try await Requests.get("https://meta.fabricmc.net/v2/versions/loader/\(minecraftVersion)").json().arrayValue
-                    .map { .init(id: $0["loader"]["version"].stringValue, stable: $0["loader"]["stable"].boolValue) }
+                // 稳定版判断逻辑：https://github.com/PCL-Community/PCL2-CE/blob/45773cb9c69e677a3ae334c3d1f55f08468d623a/Plain%20Craft%20Launcher%202/Modules/Minecraft/ModDownload.vb#L1047
+                    .map { .init(id: $0["loader"]["version"].stringValue, beta: $0["loader"]["version"].stringValue.contains("alpha")) }
                 self.versions = versions
                 loadState = versions.isEmpty ? .noUsableVersion : .finished
             }
@@ -125,13 +150,13 @@ private struct ModLoaderCard: View {
             case .loading: "加载中"
             case .noUsableVersion: "无可用版本"
             case .error(let message): "加载失败：\(message)"
-            case .finished: "加载完成"
+            case .finished: "可以添加"
             }
         }
     }
     
     private struct Version {
         public let id: String
-        public let stable: Bool
+        public let beta: Bool
     }
 }

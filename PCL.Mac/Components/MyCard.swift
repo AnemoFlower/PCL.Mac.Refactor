@@ -8,7 +8,9 @@
 import SwiftUI
 
 struct MyCard<Content: View>: View {
-    @Environment(\.cardIndex) private var index: Int?
+    @Environment(\.cardIndex) private var index: Int
+    @Environment(\.disableCardAppearAnimation) private var disableCardAppearAnimation: Bool
+    @Environment(\.disableHoverAnimation) private var disableHoverAnimation: Bool
     /// 带动画
     @State private var appeared: Bool = false
     /// 无动画，在 `appeared` 动画结束后变更
@@ -64,7 +66,7 @@ struct MyCard<Content: View>: View {
                     }
                 }
             }
-            .foregroundStyle(appearFinished && hovered ? Color.color2 : .color1)
+            .foregroundStyle(appearFinished && !disableHoverAnimation && hovered ? Color.color2 : .color1)
             .frame(height: titled ? 12 : 0)
             .frame(maxWidth: .infinity)
             .padding(titled ? 12 : padding / 2)
@@ -98,6 +100,7 @@ struct MyCard<Content: View>: View {
             VStack {
                 content()
             }
+            .disableHoverAnimation(!appearFinished)
             .padding(EdgeInsets(top: 0, leading: padding, bottom: padding, trailing: padding))
             .background {
                 GeometryReader { proxy in
@@ -127,14 +130,19 @@ struct MyCard<Content: View>: View {
         .offset(y: appeared ? 0 : -25)
         .opacity(appeared ? 1 : 0)
         .animation(.easeInOut(duration: 0.2), value: hovered)
-        .animation(.spring(response: 0.4, dampingFraction: 0.5), value: appeared)
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index ?? 0) * 0.04) {
+            if disableCardAppearAnimation {
                 appeared = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index ?? 0) * 0.04 + 0.4) {
                 appearFinished = true
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.04) {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.5)) { appeared = true }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.04 + 0.4) {
+                    appearFinished = true
+                }
             }
+            
             if let initialFolded {
                 folded = initialFolded
             } else {
@@ -149,19 +157,45 @@ struct MyCard<Content: View>: View {
 }
 
 private struct CardIndexKey: EnvironmentKey {
-    static let defaultValue: Int? = nil
+    public static let defaultValue: Int = 0
+}
+
+private struct DisableCardAppearAnimationKey: EnvironmentKey {
+    public static let defaultValue: Bool = false
+}
+
+private struct DisableHoverAnimationKey: EnvironmentKey {
+    public static let defaultValue: Bool = false
 }
 
 extension EnvironmentValues {
-    var cardIndex: Int? {
+    var cardIndex: Int {
         get { self[CardIndexKey.self] }
         set { self[CardIndexKey.self] = newValue }
+    }
+    
+    var disableCardAppearAnimation: Bool {
+        get { self[DisableCardAppearAnimationKey.self] }
+        set { self[DisableCardAppearAnimationKey.self] = newValue }
+    }
+    
+    var disableHoverAnimation: Bool {
+        get { self[DisableHoverAnimationKey.self] }
+        set { self[DisableHoverAnimationKey.self] = newValue }
     }
 }
 
 extension View {
     func cardIndex(_ index: Int) -> some View {
         environment(\.cardIndex, index)
+    }
+    
+    func disableCardAppearAnimation(_ disabled: Bool = true) -> some View {
+        environment(\.disableCardAppearAnimation, disabled)
+    }
+    
+    func disableHoverAnimation(_ disabled: Bool = true) -> some View {
+        environment(\.disableHoverAnimation, disabled)
     }
 }
 
