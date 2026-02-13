@@ -93,7 +93,7 @@ private struct VersionView: View {
                 hint("请先添加一个游戏目录！", type: .critical)
                 return
             }
-            AppRouter.shared.append(.minecraftInstallOptions(version: .init(version.id)))
+            AppRouter.shared.append(.minecraftInstallOptions(version: version))
         }
     }
 }

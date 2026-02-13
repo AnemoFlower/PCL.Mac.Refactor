@@ -12,9 +12,9 @@ struct MinecraftInstallOptionsPage: View {
     @EnvironmentObject private var viewModel: InstanceViewModel
     @State private var name: String = ""
     @State private var loader: MinecraftInstallTask.ModLoader?
-    private let version: MinecraftVersion
+    private let version: VersionManifest.Version
     
-    init(version: MinecraftVersion) {
+    init(version: VersionManifest.Version) {
         self.name = version.id
         self.version = version
     }
@@ -24,7 +24,7 @@ struct MinecraftInstallOptionsPage: View {
             VStack {
                 MyCard("", titled: false) {
                     HStack {
-                        Image("GrassBlock")
+                        Image(icon)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 32, height: 32)
@@ -36,7 +36,7 @@ struct MinecraftInstallOptionsPage: View {
                     }
                 }
                 .padding(.bottom, 40)
-                ModLoaderCard(.fabric, version, $loader)
+                ModLoaderCard(.fabric, version.id, $loader)
                     .cardIndex(1)
                 Spacer()
             }
@@ -49,7 +49,7 @@ struct MinecraftInstallOptionsPage: View {
                     hint("请先添加一个游戏目录！", type: .critical)
                     return
                 }
-                
+                let version: MinecraftVersion = .init(version.id)
                 TaskManager.shared.execute(task: MinecraftInstallTask.create(name: name, version: version, repository: repository, modLoader: loader) { instance in
                     viewModel.switchInstance(to: instance, repository)
                     if AppRouter.shared.getLast() == .tasks {
@@ -64,6 +64,16 @@ struct MinecraftInstallOptionsPage: View {
             .padding()
         }
     }
+    
+    private var icon: String {
+        if let loader {
+            return switch loader {
+            case .fabric: "Fabric"
+            }
+        } else {
+            return version.type == .snapshot ? "Dirt" : "GrassBlock"
+        }
+    }
 }
 
 private struct ModLoaderCard: View {
@@ -71,9 +81,9 @@ private struct ModLoaderCard: View {
     @State private var versions: [Version]?
     @State private var loadState: LoadState = .loading
     private let type: ModLoader
-    private let minecraftVersion: MinecraftVersion
+    private let minecraftVersion: String
     
-    init(_ type: ModLoader, _ minecraftVersion: MinecraftVersion, _ currentLoader: Binding<MinecraftInstallTask.ModLoader?>, ) {
+    init(_ type: ModLoader, _ minecraftVersion: String, _ currentLoader: Binding<MinecraftInstallTask.ModLoader?>, ) {
         self.type = type
         self.minecraftVersion = minecraftVersion
         self._currentLoader = currentLoader
