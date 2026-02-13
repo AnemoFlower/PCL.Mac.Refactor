@@ -9,34 +9,35 @@ import SwiftUI
 import Core
 
 struct MinecraftInstallOptionsPage: View {
-    @EnvironmentObject private var viewModel: InstanceViewModel
-    @State private var name: String = ""
-    @State private var loader: MinecraftInstallTask.ModLoader?
-    private let version: VersionManifest.Version
+    @StateObject private var viewModel: MinecraftInstallOptionsViewModel
+    @EnvironmentObject private var instanceVM: InstanceManager
     
     init(version: VersionManifest.Version) {
-        self.name = version.id
-        self.version = version
+        self._viewModel = .init(wrappedValue: .init(version: version))
     }
     
     var body: some View {
         CardContainer {
             VStack {
-                MyCard("", titled: false) {
+                MyCard("", titled: false, limitHeight: false) {
                     HStack {
                         Image(icon)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 32, height: 32)
                             .padding(.trailing, 12)
-                        MyTextField(initial: name, immediately: true) { newName in
-                            name = newName
+                        VStack(alignment: .leading) {
+                            if let errorMessage = viewModel.errorMessage {
+                                MyText(errorMessage, color: .red)
+                            }
+                            MyTextField(text: $viewModel.name)
+                            .fixedSize(horizontal: false, vertical: true)
                         }
-                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 40)
-                ModLoaderCard(.fabric, version.id, $loader)
+                ModLoaderCard(.fabric, viewModel.version.id, $viewModel.loader)
                     .cardIndex(1)
                 Spacer()
             }
@@ -44,14 +45,18 @@ struct MinecraftInstallOptionsPage: View {
         }
         .overlay(alignment: .bottom) {
             MyExtraTextButton(image: "DownloadPageIcon", imageSize: 20, text: "开始下载") {
-                guard let repository = viewModel.currentRepository else {
-                    warn("试图安装 \(version)，但没有设置游戏仓库")
+                if let errorMessage = viewModel.errorMessage {
+                    hint(errorMessage, type: .critical)
+                    return
+                }
+                guard let repository = instanceVM.currentRepository else {
+                    warn("试图安装 \(viewModel.version)，但没有设置游戏仓库")
                     hint("请先添加一个游戏目录！", type: .critical)
                     return
                 }
-                let version: MinecraftVersion = .init(version.id)
-                TaskManager.shared.execute(task: MinecraftInstallTask.create(name: name, version: version, repository: repository, modLoader: loader) { instance in
-                    viewModel.switchInstance(to: instance, repository)
+                let version: MinecraftVersion = .init(viewModel.version.id)
+                TaskManager.shared.execute(task: MinecraftInstallTask.create(name: viewModel.name, version: version, repository: repository, modLoader: viewModel.loader) { instance in
+                    instanceVM.switchInstance(to: instance, repository)
                     if AppRouter.shared.getLast() == .tasks {
                         AppRouter.shared.removeLast()
                         if case .minecraftInstallOptions = AppRouter.shared.getLast() {
@@ -63,27 +68,28 @@ struct MinecraftInstallOptionsPage: View {
             }
             .padding()
         }
+        .animation(.spring(duration: 0.2), value: viewModel.errorMessage)
     }
     
     private var icon: String {
-        if let loader {
+        if let loader = viewModel.loader {
             return switch loader {
             case .fabric: "Fabric"
             }
         } else {
-            return version.type == .snapshot ? "Dirt" : "GrassBlock"
+            return viewModel.version.type == .snapshot ? "Dirt" : "GrassBlock"
         }
     }
 }
 
 private struct ModLoaderCard: View {
-    @Binding private var currentLoader: MinecraftInstallTask.ModLoader?
+    @Binding private var currentLoader: MinecraftInstallTask.Loader?
     @State private var versions: [Version]?
     @State private var loadState: LoadState = .loading
     private let type: ModLoader
     private let minecraftVersion: String
     
-    init(_ type: ModLoader, _ minecraftVersion: String, _ currentLoader: Binding<MinecraftInstallTask.ModLoader?>, ) {
+    init(_ type: ModLoader, _ minecraftVersion: String, _ currentLoader: Binding<MinecraftInstallTask.Loader?>, ) {
         self.type = type
         self.minecraftVersion = minecraftVersion
         self._currentLoader = currentLoader

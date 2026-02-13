@@ -9,7 +9,7 @@ import SwiftUI
 import Core
 
 struct InstanceListPage: View {
-    @EnvironmentObject private var instanceViewModel: InstanceViewModel
+    @EnvironmentObject private var instanceViewModel: InstanceManager
     @EnvironmentObject private var viewModel: InstanceListViewModel
     @ObservedObject private var repository: MinecraftRepository
     

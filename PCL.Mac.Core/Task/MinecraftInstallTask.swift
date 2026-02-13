@@ -25,7 +25,7 @@ public enum MinecraftInstallTask {
         name: String,
         version: MinecraftVersion,
         repository: MinecraftRepository,
-        modLoader: ModLoader?,
+        modLoader: Loader?,
         completion: ((MinecraftInstance) -> Void)? = nil
     ) -> MyTask<Model> {
         let model: Model = .init(
@@ -330,7 +330,13 @@ public enum MinecraftInstallTask {
         }
     }
     
-    public enum ModLoader {
+    public enum Loader {
         case fabric(version: String)
+        
+        public var loader: ModLoader {
+            switch self {
+            case .fabric: .fabric
+            }
+        }
     }
 }

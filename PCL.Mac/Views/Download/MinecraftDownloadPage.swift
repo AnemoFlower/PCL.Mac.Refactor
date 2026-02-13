@@ -70,7 +70,7 @@ struct MinecraftDownloadPage: View {
 }
 
 private struct VersionView: View {
-    @EnvironmentObject private var viewModel: InstanceViewModel
+    @EnvironmentObject private var viewModel: InstanceManager
     
     private static let dateFormatter: DateFormatter = {
         let formatter: DateFormatter = .init()
