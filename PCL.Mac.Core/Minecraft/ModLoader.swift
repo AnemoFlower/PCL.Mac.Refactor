@@ -8,11 +8,12 @@
 import Foundation
 
 public enum ModLoader: CustomStringConvertible {
-    case fabric
+    case fabric, forge
     
     public var description: String {
         switch self {
         case .fabric: "Fabric"
+        case .forge: "Forge"
         }
     }
 }

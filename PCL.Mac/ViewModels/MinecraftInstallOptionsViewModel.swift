@@ -11,7 +11,7 @@ import Core
 class MinecraftInstallOptionsViewModel: ObservableObject {
     @Published public var name: String { didSet { checkName() } }
     @Published public var loader: MinecraftInstallTask.Loader? {
-        willSet { lastLoader = loader?.loader }
+        willSet { lastLoader = loader?.type }
         didSet {
             if let lastLoader, loader == nil {
                 if name == "\(version.id)-\(lastLoader)" {
@@ -20,12 +20,12 @@ class MinecraftInstallOptionsViewModel: ObservableObject {
                 }
             } else if let loader, lastLoader == nil {
                 if name == version.id {
-                    name = "\(version.id)-\(loader.loader)"
+                    name = "\(version.id)-\(loader.type)"
                     return
                 }
             } else if let loader, let lastLoader {
                 if name == "\(version.id)-\(lastLoader)" {
-                    name = "\(version.id)-\(loader.loader)"
+                    name = "\(version.id)-\(loader.type)"
                     return
                 }
             }

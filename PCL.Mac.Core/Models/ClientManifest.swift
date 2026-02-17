@@ -125,7 +125,7 @@ public class ClientManifest: Decodable {
         }
     }
     
-    public class Artifact: Decodable {
+    public class Artifact: Codable {
         public let path: String
         public let sha1: String?
         public let size: Int?
@@ -139,7 +139,7 @@ public class ClientManifest: Decodable {
         }
     }
     
-    public class AssetIndex: Decodable {
+    public class AssetIndex: Codable {
         public let id: String
         public let sha1: String
         public let size: Int

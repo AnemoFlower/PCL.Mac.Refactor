@@ -47,11 +47,7 @@ public enum MinecraftInstallTask {
                 )
                 model.manifest = manifest
             },
-            // Mod Loader
-            .init(3, "__map_manifest", display: false) { task, model in
-                model.mappedManifest = NativesMapper.map(model.manifest)
-            },
-            .init(3, "下载资源索引文件") { task, model in
+            .init(1, "下载资源索引文件") { task, model in
                 let assetIndex: AssetIndex = try await downloadAssetIndex(
                     assetIndex: model.manifest.assetIndex,
                     repository: model.repository,
@@ -59,28 +55,34 @@ public enum MinecraftInstallTask {
                 )
                 model.assetIndex = assetIndex
             },
-            .init(4, "下载客户端本体") { task, model in
+            .init(2, "下载客户端本体") { task, model in
                 try await downloadClient(
-                    clientDownload: model.mappedManifest.downloads.client,
+                    clientDownload: model.manifest.downloads.client,
                     runningDirectory: model.runningDirectory,
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(4, "下载散列资源文件") { task, model in
+            
+            // Forge / NeoForge
+            
+            .init(5, "__map_manifest", display: false) { task, model in
+                model.mappedManifest = NativesMapper.map(model.manifest)
+            },
+            .init(5, "下载散列资源文件") { task, model in
                 try await downloadAssets(
                     assetIndex: model.assetIndex,
                     repository: model.repository,
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(4, "下载依赖库文件") { task, model in
+            .init(6, "下载依赖库文件") { task, model in
                 try await downloadLibraries(
                     manifest: model.mappedManifest,
                     repository: model.repository,
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(5, "解压本地库文件", display: version < .init("1.19.1")) { task, model in
+            .init(7, "解压本地库文件", display: version < .init("1.19.1")) { task, model in
                 try await extractNatives(
                     manifest: model.mappedManifest,
                     runningDirectory: model.runningDirectory,
@@ -88,7 +90,7 @@ public enum MinecraftInstallTask {
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(6, "__completion", display: false) { _, _ in
+            .init(8, "__completion", display: false) { _, _ in
                 let instance: MinecraftInstance = .init(
                     runningDirectory: repository.versionsURL.appending(path: name),
                     version: version,
@@ -103,20 +105,36 @@ public enum MinecraftInstallTask {
         ]
         
         if let modLoader {
-            switch modLoader {
-            case .fabric(let loaderVersion):
+            switch modLoader.type {
+            case .fabric:
                 subTasks.insert(
-                    .init(1, "安装 Fabric Loader") { task, model in
+                    .init(3, "安装 Fabric Loader") { task, model in
                         let manifest: ClientManifest = try await downloadFabricManifest(
                             version: version,
                             repository: repository,
                             runningDirectory: model.runningDirectory,
-                            loaderVersion: loaderVersion,
+                            loaderVersion: modLoader.version,
                             progressHandler: task.setProgress(_:)
                         )
                         model.manifest = manifest.merge(to: model.manifest)
                     },
-                    at: 2
+                    at: 3
+                )
+                
+            case .forge:
+                subTasks.insert(
+                    .init(3, "下载 Forge 安装器文件") { task, model in
+                        let service: ForgeInstallService = .init(minecraftVersion: model.version, version: modLoader.version, repository: model.repository, runningDirectory: model.runningDirectory)
+                        model.forgeInstallService = service
+                        try await service.downloadFiles(progressHandler: task.setProgress(_:))
+                    },
+                    at: 3
+                )
+                subTasks.insert(
+                    .init(4, "执行 Forge 安装器") { task, model in
+                        try await model.forgeInstallService!.executeProcessors(progressHandler: task.setProgress(_:))
+                    },
+                    at: 4
                 )
             }
         }
@@ -134,38 +152,37 @@ public enum MinecraftInstallTask {
         repository: MinecraftRepository,
         progressHandler: @MainActor @escaping (Double) -> Void
     ) async throws {
-        var progress: [Double] = Array(repeating: 0, count: 5) {
-            didSet {
-                progressHandler(progress[0] * 0.15 + progress[1] * 0.05 + progress[2] * 0.5 + progress[3] * 0.25 + progress[4] * 0.05)
-            }
-        }
+        let progressHandler: ConcurrentProgressHandler = .init(totalHandler: progressHandler)
+        progressHandler.startCalculate(interval: 0.1)
         
         try await downloadClient(
             clientDownload: manifest.downloads.client,
             runningDirectory: runningDirectory,
-            progressHandler: { progress[0] = $0 }
+            progressHandler: progressHandler.handler(withMultiplier: 0.15)
         )
         let assetIndex: AssetIndex = try await downloadAssetIndex(
             assetIndex: manifest.assetIndex,
             repository: repository,
-            progressHandler: { progress[1] = $0 }
+            progressHandler: progressHandler.handler(withMultiplier: 0.05)
         )
         try await downloadAssets(
             assetIndex: assetIndex,
             repository: repository,
-            progressHandler: { progress[2] = $0 }
+            progressHandler: progressHandler.handler(withMultiplier: 0.5)
         )
         try await downloadLibraries(
             manifest: manifest,
             repository: repository,
-            progressHandler: { progress[3] = $0 }
+            progressHandler: progressHandler.handler(withMultiplier: 0.25)
         )
         try await extractNatives(
             manifest: manifest,
             runningDirectory: runningDirectory,
             repository: repository,
-            progressHandler: { progress[4] = $0 }
+            progressHandler: progressHandler.handler(withMultiplier: 0.05)
         )
+        
+        await progressHandler.stopCalculate()
     }
     
     private static func downloadClientManifest(
@@ -188,33 +205,6 @@ public enum MinecraftInstallTask {
             progressHandler: progressHandler
         )
         return try JSONDecoder.shared.decode(ClientManifest.self, from: Data(contentsOf: destination))
-    }
-    
-    private static func downloadFabricManifest(
-        version: MinecraftVersion,
-        repository: MinecraftRepository,
-        runningDirectory: URL,
-        loaderVersion: String,
-        progressHandler: @MainActor @escaping (Double) -> Void
-    ) async throws -> ClientManifest {
-        let manifestURL: URL = runningDirectory.appending(path: "\(runningDirectory.lastPathComponent).json")
-        let parentURL: URL = runningDirectory.appending(path: ".parent/\(version).json")
-        if !FileManager.default.fileExists(atPath: parentURL.path) {
-            try FileManager.default.createDirectory(at: runningDirectory.appending(path: ".parent"), withIntermediateDirectories: false)
-            try FileManager.default.moveItem(at: manifestURL, to: parentURL)
-        }
-        if FileManager.default.fileExists(atPath: manifestURL.path) {
-            try FileManager.default.removeItem(at: manifestURL)
-        }
-        let url: URL = .init(string: "https://meta.fabricmc.net/v2/versions/loader/\(version)/\(loaderVersion)/profile/json")!
-        try await SingleFileDownloader.download(
-            url: url,
-            destination: manifestURL,
-            sha1: nil,
-            replaceMethod: .throw,
-            progressHandler: progressHandler
-        )
-        return try JSONDecoder.shared.decode(ClientManifest.self, from: Data(contentsOf: manifestURL))
     }
     
     private static func downloadAssetIndex(
@@ -322,6 +312,8 @@ public enum MinecraftInstallTask {
         public var mappedManifest: ClientManifest!
         public var assetIndex: AssetIndex!
         
+        public var forgeInstallService: ForgeInstallService?
+        
         public init(name: String, version: MinecraftVersion, repository: MinecraftRepository) {
             self.name = name
             self.version = version
@@ -330,13 +322,43 @@ public enum MinecraftInstallTask {
         }
     }
     
-    public enum Loader {
-        case fabric(version: String)
+    public struct Loader {
+        public let type: ModLoader
+        public let version: String
         
-        public var loader: ModLoader {
-            switch self {
-            case .fabric: .fabric
-            }
+        public init(type: ModLoader, version: String) {
+            self.type = type
+            self.version = version
         }
+    }
+}
+
+// MARK: - Fabric 安装
+extension MinecraftInstallTask {
+    private static func downloadFabricManifest(
+        version: MinecraftVersion,
+        repository: MinecraftRepository,
+        runningDirectory: URL,
+        loaderVersion: String,
+        progressHandler: @MainActor @escaping (Double) -> Void
+    ) async throws -> ClientManifest {
+        let manifestURL: URL = runningDirectory.appending(path: "\(runningDirectory.lastPathComponent).json")
+        let parentURL: URL = runningDirectory.appending(path: ".parent/\(version).json")
+        if !FileManager.default.fileExists(atPath: parentURL.path) {
+            try FileManager.default.createDirectory(at: runningDirectory.appending(path: ".parent"), withIntermediateDirectories: false)
+            try FileManager.default.moveItem(at: manifestURL, to: parentURL)
+        }
+        if FileManager.default.fileExists(atPath: manifestURL.path) {
+            try FileManager.default.removeItem(at: manifestURL)
+        }
+        let url: URL = .init(string: "https://meta.fabricmc.net/v2/versions/loader/\(version)/\(loaderVersion)/profile/json")!
+        try await SingleFileDownloader.download(
+            url: url,
+            destination: manifestURL,
+            sha1: nil,
+            replaceMethod: .throw,
+            progressHandler: progressHandler
+        )
+        return try JSONDecoder.shared.decode(ClientManifest.self, from: Data(contentsOf: manifestURL))
     }
 }

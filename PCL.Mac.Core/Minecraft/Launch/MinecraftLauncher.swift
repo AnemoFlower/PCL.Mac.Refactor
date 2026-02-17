@@ -54,7 +54,7 @@ public class MinecraftLauncher {
         arguments.append(contentsOf: manifest.jvmArguments.flatMap { $0.rules.allSatisfy { $0.test(with: options) } ? $0.value : [] })
         arguments.append(manifest.mainClass)
         arguments.append(contentsOf: manifest.gameArguments.flatMap { $0.rules.allSatisfy { $0.test(with: options) } ? $0.value : [] })
-        arguments = arguments.map(replaceWithValue(_:))
+        arguments = arguments.map { Utils.replace($0, withValues: values) }
         process.arguments = arguments
         
         // accessToken 打码
@@ -99,13 +99,5 @@ public class MinecraftLauncher {
         }
         urls.append(runningDirectory.appending(path: "\(runningDirectory.lastPathComponent).jar"))
         return urls.map(\.path).joined(separator: ":")
-    }
-    
-    private func replaceWithValue(_ string: String) -> String {
-        var s: String = string
-        for key in values.keys {
-            s = s.replacingOccurrences(of: "${\(key)}", with: values[key]!)
-        }
-        return s
     }
 }

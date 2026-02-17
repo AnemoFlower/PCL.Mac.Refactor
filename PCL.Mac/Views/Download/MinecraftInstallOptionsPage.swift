@@ -39,6 +39,8 @@ struct MinecraftInstallOptionsPage: View {
                 .padding(.bottom, 40)
                 ModLoaderCard(.fabric, viewModel.version.id, $viewModel.loader)
                     .cardIndex(1)
+                ModLoaderCard(.forge, viewModel.version.id, $viewModel.loader)
+                    .cardIndex(2)
                 Spacer()
             }
             .padding(EdgeInsets(top: 10, leading: 25, bottom: 25, trailing: 25))
@@ -73,8 +75,9 @@ struct MinecraftInstallOptionsPage: View {
     
     private var icon: String {
         if let loader = viewModel.loader {
-            return switch loader {
+            return switch loader.type {
             case .fabric: "Fabric"
+            case .forge: "Forge"
             }
         } else {
             return viewModel.version.type == .snapshot ? "Dirt" : "GrassBlock"
@@ -102,7 +105,7 @@ private struct ModLoaderCard: View {
                     if let versions {
                         MyList(versions.map { ListItem(image: iconName, name: $0.id, description: $0.beta ? "测试版" : "稳定版") }) { index in
                             if let index {
-                                currentLoader = .fabric(version: versions[index].id)
+                                currentLoader = MinecraftInstallTask.Loader(type: type, version: versions[index].id)
                             } else {
                                 currentLoader = nil
                             }
@@ -111,12 +114,12 @@ private struct ModLoaderCard: View {
                 }
                 .disableCardAppearAnimation()
                 HStack(spacing: 7) {
-                    if let currentLoader, case .fabric(let version) = currentLoader {
+                    if let currentLoader, currentLoader.type == type {
                         Image(iconName)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 18)
-                        MyText(version, color: .colorGray1)
+                        MyText(currentLoader.version, color: .colorGray1)
                     } else {
                         MyText(loadState.description, color: .colorGray4)
                     }
@@ -134,19 +137,22 @@ private struct ModLoaderCard: View {
     private var iconName: String {
         switch type {
         case .fabric: "Fabric"
+        case .forge: "Forge"
         }
     }
     
     private func loadVersions() async {
         do {
-            switch type {
+            let versions: [Version] = switch type {
             case .fabric:
-                let versions: [Version] = try await Requests.get("https://meta.fabricmc.net/v2/versions/loader/\(minecraftVersion)").json().arrayValue
-                // 稳定版判断逻辑：https://github.com/PCL-Community/PCL2-CE/blob/45773cb9c69e677a3ae334c3d1f55f08468d623a/Plain%20Craft%20Launcher%202/Modules/Minecraft/ModDownload.vb#L1047
-                    .map { .init(id: $0["loader"]["version"].stringValue, beta: $0["loader"]["version"].stringValue.contains("alpha")) }
-                self.versions = versions
-                loadState = versions.isEmpty ? .noUsableVersion : .finished
+                try await Requests.get("https://meta.fabricmc.net/v2/versions/loader/\(minecraftVersion)").json().arrayValue
+                    .map { .init(id: $0["loader"]["version"].stringValue) }
+            case .forge:
+                try await Requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/\(minecraftVersion)").json().arrayValue
+                    .map { .init(id: $0["version"].stringValue) }
             }
+            self.versions = versions
+            loadState = versions.isEmpty ? .noUsableVersion : .finished
         } catch {
             err("加载 \(type) 版本列表失败：\(error.localizedDescription)")
             await MainActor.run {
@@ -174,5 +180,11 @@ private struct ModLoaderCard: View {
     private struct Version {
         public let id: String
         public let beta: Bool
+        
+        public init(id: String) {
+            self.id = id
+            // 稳定版判断逻辑：https://github.com/PCL-Community/PCL2-CE/blob/45773cb9c69e677a3ae334c3d1f55f08468d623a/Plain%20Craft%20Launcher%202/Modules/Minecraft/ModDownload.vb#L1047
+            self.beta = id.contains("alpha")
+        }
     }
 }
