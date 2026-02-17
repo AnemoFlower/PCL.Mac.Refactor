@@ -75,7 +75,7 @@ public class ForgeInstallService {
         self.installProfile = try JSONDecoder.shared.decode(ForgeInstallProfile.self, from: .init(contentsOf: profileURL))
         
         let manifestURL: URL = runningDirectory.appending(path: "\(runningDirectory.lastPathComponent).json")
-        let parentURL: URL = runningDirectory.appending(path: ".parent/\(version).json")
+        let parentURL: URL = runningDirectory.appending(path: ".parent/\(minecraftVersion).json")
         if !FileManager.default.fileExists(atPath: parentURL.path) {
             try FileManager.default.createDirectory(at: runningDirectory.appending(path: ".parent"), withIntermediateDirectories: false)
             try FileManager.default.moveItem(at: manifestURL, to: parentURL)
@@ -116,13 +116,7 @@ public class ForgeInstallService {
     /// 下载安装器所需的依赖项。
     private func downloadInstallerDependencies(progressHandler: @MainActor @escaping (Double) -> Void) async throws {
         let libraries: [ForgeInstallProfile.Library] = installProfile.libraries
-        let downloadItems: [DownloadItem] = libraries.map { library in
-                .init(
-                    url: library.artifact.url,
-                    destination: librariesURL.appending(path: library.artifact.path),
-                    sha1: library.artifact.sha1
-                )
-        }
+        let downloadItems: [DownloadItem] = libraries.compactMap { $0.artifact.downloadItem(destinationDirectory: librariesURL) }
         try await MultiFileDownloader(items: downloadItems, concurrentLimit: 64, replaceMethod: .replace, progressHandler: progressHandler).start()
     }
     

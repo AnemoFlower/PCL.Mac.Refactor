@@ -261,7 +261,7 @@ public enum MinecraftInstallTask {
     ) async throws {
         let items: [DownloadItem] = (manifest.getLibraries() + manifest.getNatives())
             .compactMap(\.artifact)
-            .map { DownloadItem(url: $0.url, destination: repository.librariesURL.appending(path: $0.path), sha1: $0.sha1) }
+            .compactMap { $0.downloadItem(destinationDirectory: repository.librariesURL) }
         try await MultiFileDownloader(items: items, concurrentLimit: 64, replaceMethod: .skip, progressHandler: progressHandler).start()
     }
     

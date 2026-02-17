@@ -81,7 +81,7 @@ public class ClientManifest: Decodable {
         self.id = try container.decode(String.self, forKey: .id)
         self.javaVersion = try container.decodeIfPresent(JavaVersion.self, forKey: .javaVersion) ?? .init(component: "jre-legacy", majorVersion: 8)
         self.libraries = try container.decode([Library].self, forKey: .libraries)
-        self.logging = try container.decodeIfPresent(Logging.self, forKey: .logging) ?? .init(
+        self.logging = (try? container.decodeIfPresent(Logging.self, forKey: .logging)) ?? .init(
             argument: "-Dlog4j.configurationFile=${path}",
             file: .init(
                 id: "client-1.12.xml",
@@ -129,13 +129,25 @@ public class ClientManifest: Decodable {
         public let path: String
         public let sha1: String?
         public let size: Int?
-        public let url: URL
+        public let url: URL?
         
-        public init(path: String, sha1: String?, size: Int?, url: URL) {
+        public init(path: String, sha1: String?, size: Int?, url: URL?) {
             self.path = path
             self.sha1 = sha1
             self.size = size
             self.url = url
+        }
+        
+        public required init(from decoder: any Decoder) throws {
+            let container: KeyedDecodingContainer<ClientManifest.Artifact.CodingKeys> = try decoder.container(keyedBy: ClientManifest.Artifact.CodingKeys.self)
+            self.path = try container.decode(String.self, forKey: ClientManifest.Artifact.CodingKeys.path)
+            self.sha1 = try container.decodeIfPresent(String.self, forKey: ClientManifest.Artifact.CodingKeys.sha1)
+            self.size = try container.decodeIfPresent(Int.self, forKey: ClientManifest.Artifact.CodingKeys.size)
+            self.url = try? container.decodeIfPresent(URL.self, forKey: ClientManifest.Artifact.CodingKeys.url)
+        }
+        
+        public func downloadItem(destinationDirectory: URL) -> DownloadItem? {
+            return url.map { DownloadItem(url: $0, destination: destinationDirectory.appending(path: path), sha1: sha1) }
         }
     }
     
