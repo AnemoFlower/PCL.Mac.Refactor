@@ -17,83 +17,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Basic info
-        shell: bash
+      - name: Icon info
         run: |
-          set -euxo pipefail
-          xcodebuild -version
-          swift --version || true
-          git rev-parse HEAD
-          git log -1 --oneline
+          find PCL.Mac/Assets.xcassets -type d -name "*Add*.imageset" -maxdepth 6 -print
+          
+          ls -la PCL.Mac/Assets.xcassets/Icons
 
-      - name: List key assets (names + paths)
-        shell: bash
-        run: |
-          set -euxo pipefail
-          find PCL.Mac/Assets.xcassets -maxdepth 4 -type d -name "*.imageset" | sort | sed -n "1,200p"
-          echo "----"
-          find PCL.Mac/Assets.xcassets -type d -name "IconAdd.imageset" -o -name "iconAdd.imageset" -o -name "IconUpload.imageset" -o -name "iconUpload.imageset" -o -name "IconBlock.imageset" -o -name "iconBlock.imageset" | sort
-
-      - name: Build settings + attempt build (allow failure)
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          DERIVED_DATA_PATH="$(mktemp -d)/DerivedData"
-          echo "DERIVED_DATA_PATH=$DERIVED_DATA_PATH" | tee -a "$GITHUB_ENV"
-
-          # 仅用于确认开关/路径信息（不会生成你要的 DerivedSources）
-          xcodebuild \
-            -project PCL.Mac.xcodeproj \
-            -scheme PCL.Mac \
-            -configuration Debug \
-            -derivedDataPath "$DERIVED_DATA_PATH" \
-            -showBuildSettings | tee build_settings.txt
-
-          echo "---- Attempt build (this may fail, but we continue) ----"
-          set +e
-          xcodebuild \
-            -project PCL.Mac.xcodeproj \
-            -scheme PCL.Mac \
-            -configuration Debug \
-            -destination "generic/platform=macOS" \
-            -derivedDataPath "$DERIVED_DATA_PATH" \
-            build
-          BUILD_EXIT_CODE=$?
-          set -e
-          echo "xcodebuild build exit code: $BUILD_EXIT_CODE"
-
-      - name: Search DerivedData for generated symbols (always run)
-        if: always()
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          echo "Using DERIVED_DATA_PATH=$DERIVED_DATA_PATH"
-          ls -la "$DERIVED_DATA_PATH" || true
-
-          echo "---- Find candidate swift files (first 300) ----"
-          find "$DERIVED_DATA_PATH" -type f -name "*.swift" | sort | sed -n "1,300p" || true
-
-          echo "---- Grep for ImageResource / icon names (do not fail if not found) ----"
-          set +e
-          grep -R --line-number --fixed-strings "ImageResource" "$DERIVED_DATA_PATH"
-          grep -R --line-number --fixed-strings "iconAdd" "$DERIVED_DATA_PATH"
-          grep -R --line-number --fixed-strings "IconAdd" "$DERIVED_DATA_PATH"
-          grep -R --line-number --fixed-strings "iconUpload" "$DERIVED_DATA_PATH"
-          grep -R --line-number --fixed-strings "IconUpload" "$DERIVED_DATA_PATH"
-          grep -R --line-number --fixed-strings "iconBlock" "$DERIVED_DATA_PATH"
-          grep -R --line-number --fixed-strings "IconBlock" "$DERIVED_DATA_PATH"
-          set -e
-
-          echo "---- Try to locate likely generated asset symbol files and print head ----"
-          set +e
-          CANDIDATES=$(find "$DERIVED_DATA_PATH" -type f -name "*.swift" | grep -E "Asset|Symbols|Generated|Resources" | head -n 20)
-          set -e
-
-          echo "$CANDIDATES" || true
-
-          for f in $CANDIDATES; do
-            echo "========== $f =========="
-            sed -n "1,200p" "$f" || true
-          done
+          cat PCL.Mac/Assets.xcassets/Icons/iconAdd.imageset/Contents.json || true
+          cat PCL.Mac/Assets.xcassets/Icons/IconAdd.imageset/Contents.json || true
