@@ -30,15 +30,32 @@ jobs:
             -project PCL.Mac.xcodeproj -scheme PCL.Mac -configuration Debug \
             CURRENT_PROJECT_VERSION=$BUILD_NUMBER \
             -archivePath build archive
-
-      - name: Prepare app artifact directory
+        continue-on-error: true
+      
+      - name: Dump generated asset symbols
         run: |
-          mkdir "PCL.Mac-artifact"
-          cp -r ./build.xcarchive/Products/Applications/PCL.Mac.app ./PCL.Mac-artifact/PCL.Mac.app
-          cp -r ./build.xcarchive ./PCL.Mac-artifact/build.xcarchive
+          set -e
+          DERIVED_DATA_PATH="$(mktemp -d)/DerivedData"
+          xcodebuild \
+            -project PCL.Mac.xcodeproj \
+            -scheme PCL.Mac \
+            -configuration Debug \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -showBuildSettings | tee buildsettings.txt
 
-      - name: Upload app artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PCL.Mac.Refactor-${{ env.BUILD_NUMBER }}
-          path: ./PCL.Mac-artifact
+          echo "DerivedData: $DERIVED_DATA_PATH"
+          find "$DERIVED_DATA_PATH" -maxdepth 6 -type f \( -name "*Asset*.swift" -o -name "*Generated*.swift" \) -print
+
+          grep -R --line-number "iconAdd\\|IconAdd\\|iconUpload\\|IconUpload\\|iconBlock\\|IconBlock" "$DERIVED_DATA_PATH" || true
+
+      # - name: Prepare app artifact directory
+      #   run: |
+      #     mkdir "PCL.Mac-artifact"
+      #     cp -r ./build.xcarchive/Products/Applications/PCL.Mac.app ./PCL.Mac-artifact/PCL.Mac.app
+      #     cp -r ./build.xcarchive ./PCL.Mac-artifact/build.xcarchive
+
+      # - name: Upload app artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: PCL.Mac.Refactor-${{ env.BUILD_NUMBER }}
+      #     path: ./PCL.Mac-artifact
