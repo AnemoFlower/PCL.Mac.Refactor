@@ -16,7 +16,7 @@ jobs:
     runs-on: macos-26
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       
@@ -26,48 +26,19 @@ jobs:
       - name: Build app
         run: |
           echo "Build number: $BUILD_NUMBER"
-          xcodebuild \
+          xcodebuild archive \
             -project PCL.Mac.xcodeproj -scheme PCL.Mac -configuration Debug \
             CURRENT_PROJECT_VERSION=$BUILD_NUMBER \
-            -archivePath build archive
-        continue-on-error: true
-      
-      - name: Dump generated asset symbols
+            -archivePath build
+
+      - name: Prepare app artifact directory
         run: |
-          set -euxo pipefail
+          mkdir "PCL.Mac-artifact"
+          cp -r ./build.xcarchive/Products/Applications/PCL.Mac.app ./PCL.Mac-artifact/PCL.Mac.app
+          cp -r ./build.xcarchive ./PCL.Mac-artifact/build.xcarchive
 
-          DERIVED_DATA_PATH="$(mktemp -d)/DerivedData"
-          echo "DerivedData: $DERIVED_DATA_PATH"
-
-          # 关键：先真正 build，生成 DerivedSources/Swift 产物
-          xcodebuild \
-            -project PCL.Mac.xcodeproj \
-            -scheme PCL.Mac \
-            -configuration Debug \
-            -derivedDataPath "$DERIVED_DATA_PATH" \
-            -destination "generic/platform=macOS" \
-            build > /dev/null 2>&1 || true
-
-          echo "== Find candidate generated swift files =="
-          find "$DERIVED_DATA_PATH" -type f -name "*.swift" | head -n 200
-
-          echo "== Grep ImageResource / iconAdd / IconAdd =="
-          grep -R --line-number --fixed-strings "ImageResource" "$DERIVED_DATA_PATH" || true
-          grep -R --line-number --fixed-strings "iconAdd" "$DERIVED_DATA_PATH" || true
-          grep -R --line-number --fixed-strings "IconAdd" "$DERIVED_DATA_PATH" || true
-          grep -R --line-number --fixed-strings "iconUpload" "$DERIVED_DATA_PATH" || true
-          grep -R --line-number --fixed-strings "IconUpload" "$DERIVED_DATA_PATH" || true
-          grep -R --line-number --fixed-strings "iconBlock" "$DERIVED_DATA_PATH" || true
-          grep -R --line-number --fixed-strings "IconBlock" "$DERIVED_DATA_PATH" || true
-
-      # - name: Prepare app artifact directory
-      #   run: |
-      #     mkdir "PCL.Mac-artifact"
-      #     cp -r ./build.xcarchive/Products/Applications/PCL.Mac.app ./PCL.Mac-artifact/PCL.Mac.app
-      #     cp -r ./build.xcarchive ./PCL.Mac-artifact/build.xcarchive
-
-      # - name: Upload app artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: PCL.Mac.Refactor-${{ env.BUILD_NUMBER }}
-      #     path: ./PCL.Mac-artifact
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: PCL.Mac.Refactor-${{ env.BUILD_NUMBER }}
+          path: ./PCL.Mac-artifact
