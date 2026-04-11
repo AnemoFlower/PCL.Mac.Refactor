@@ -34,19 +34,31 @@ jobs:
       
       - name: Dump generated asset symbols
         run: |
-          set -e
+          set -euxo pipefail
+
           DERIVED_DATA_PATH="$(mktemp -d)/DerivedData"
+          echo "DerivedData: $DERIVED_DATA_PATH"
+
+          # 关键：先真正 build，生成 DerivedSources/Swift 产物
           xcodebuild \
             -project PCL.Mac.xcodeproj \
             -scheme PCL.Mac \
             -configuration Debug \
             -derivedDataPath "$DERIVED_DATA_PATH" \
-            -showBuildSettings | tee buildsettings.txt
+            -destination "generic/platform=macOS" \
+            build
 
-          echo "DerivedData: $DERIVED_DATA_PATH"
-          find "$DERIVED_DATA_PATH" -maxdepth 6 -type f \( -name "*Asset*.swift" -o -name "*Generated*.swift" \) -print
+          echo "== Find candidate generated swift files =="
+          find "$DERIVED_DATA_PATH" -type f -name "*.swift" | head -n 200
 
-          grep -R --line-number "iconAdd\\|IconAdd\\|iconUpload\\|IconUpload\\|iconBlock\\|IconBlock" "$DERIVED_DATA_PATH" || true
+          echo "== Grep ImageResource / iconAdd / IconAdd =="
+          grep -R --line-number --fixed-strings "ImageResource" "$DERIVED_DATA_PATH" || true
+          grep -R --line-number --fixed-strings "iconAdd" "$DERIVED_DATA_PATH" || true
+          grep -R --line-number --fixed-strings "IconAdd" "$DERIVED_DATA_PATH" || true
+          grep -R --line-number --fixed-strings "iconUpload" "$DERIVED_DATA_PATH" || true
+          grep -R --line-number --fixed-strings "IconUpload" "$DERIVED_DATA_PATH" || true
+          grep -R --line-number --fixed-strings "iconBlock" "$DERIVED_DATA_PATH" || true
+          grep -R --line-number --fixed-strings "IconBlock" "$DERIVED_DATA_PATH" || true
 
       # - name: Prepare app artifact directory
       #   run: |
