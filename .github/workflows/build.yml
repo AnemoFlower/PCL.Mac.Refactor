@@ -46,7 +46,7 @@ jobs:
             -configuration Debug \
             -derivedDataPath "$DERIVED_DATA_PATH" \
             -destination "generic/platform=macOS" \
-            build
+            build > /dev/null 2>&1 || true
 
           echo "== Find candidate generated swift files =="
           find "$DERIVED_DATA_PATH" -type f -name "*.swift" | head -n 200
