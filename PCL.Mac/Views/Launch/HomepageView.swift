@@ -42,9 +42,7 @@ struct HomepageView: View {
                             <Text>被标签包裹的{bold;文本}</Text>
                             <Text>
                                 {;}
-                                上面和下面都应该有空行
-                                
-                                上面和下面都应该有空行
+                                上面和下面应该有空行
                                 {;}
                             </Text>
                         </MyCard>

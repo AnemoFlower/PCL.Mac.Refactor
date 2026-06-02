@@ -127,9 +127,6 @@ private struct TextComponent: HomepageComponent {
 }
 
 private enum RichText {
-    // 使用 .system 有概率出现字形错误，显式设置 font family 可缓解此问题（应该吧
-    private static let defaultFontFamily = "PingFangSC"
-    
     static func parse(_ indexer: XMLIndexer, trimText: Bool) throws -> AttributedString {
         return try parse(rawContent: indexer.value(), trimText: trimText)
     }
@@ -181,12 +178,12 @@ private enum RichText {
             let style = String(style)
             switch style {
             case "bold":
-                result.font = (result.font ?? .custom(defaultFontFamily, size: 14)).bold()
+                result.font = (result.font ?? .system(size: 14)).bold()
             case "italic":
-                result.font = (result.font ?? .custom(defaultFontFamily, size: 14)).italic()
+                result.font = (result.font ?? .system(size: 14)).italic()
             default:
                 if style.hasSuffix("px"), let size = Float(style.dropLast(2)) {
-                    result.font = .custom(defaultFontFamily, size: CGFloat(size))
+                    result.font = .system(size: CGFloat(size))
                 } else if style.hasPrefix("#"), style.count == 7, let hex = UInt(style.dropFirst(), radix: 16) {
                     result.foregroundColor = .init(hex)
                 }
