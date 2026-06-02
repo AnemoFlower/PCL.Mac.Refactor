@@ -66,7 +66,7 @@ struct MyHintComponent: HomepageComponent {
     }
     
     func makeView() -> some View {
-        MyTip(text: String(content.characters), theme: color.theme)
+        MyTip(attributedText: content, theme: color.theme)
     }
 }
 

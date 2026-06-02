@@ -25,7 +25,7 @@ struct HomepageView: View {
             do {
                 let demoHomepage = """
                     <?xml version="1.0"?>
-                    <homepage author="风花AnemoFlower" description="主页解析测试">
+                    <homepage author="风花AnemoFlower" summary="主页解析测试">
                         <config
                             trimText="true"
                         />
