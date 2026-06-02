@@ -15,17 +15,37 @@ protocol HomepageComponent {
     @ViewBuilder
     func makeView() -> Body
     
-    static func deserialize(_ config: Homepage.Config, _ element: XMLIndexer) throws -> Self
+    static func deserialize(_ context: Homepage.DeserializeContext, _ element: XMLIndexer) throws -> Self
 }
 
-struct HomepageComponentDeserializer {
+struct HomepageComponentParser {
     let config: Homepage.Config
     
-    func deserialize(_ indexer: XMLIndexer) -> (any HomepageComponent)? {
+    func parseAll(_ indexer: XMLIndexer) throws -> [any HomepageComponent] {
+        guard let element = indexer.element else { return [] }
+        
+        var result: [any HomepageComponent] = []
+        for element in element.children {
+            if let xmlElement = element as? SWXMLHash.XMLElement,
+               let parsedComponent = parse(.element(xmlElement)) {
+                result.append(parsedComponent)
+            } else if let textElement = element as? TextElement,
+                      !textElement.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                result.append(TextComponent(content: try RichText.parse(rawContent: textElement.text, trimText: config.trimText)))
+            }
+        }
+        
+        return result
+    }
+    
+    func parse(_ indexer: XMLIndexer) -> (any HomepageComponent)? {
         guard let element = indexer.element else { return nil }
+        let context = Homepage.DeserializeContext(config: config, componentParser: self)
         do {
             return switch element.name.lowercased() {
-            case "myhint", "mytip": try MyHintComponent.deserialize(config, indexer)
+            case "myhint", "mytip": try MyHintComponent.deserialize(context, indexer)
+            case "mycard": try MyCardComponent.deserialize(context, indexer)
+            case "text": try TextComponent.deserialize(context, indexer)
             default: nil
             }
         } catch {
@@ -35,7 +55,7 @@ struct HomepageComponentDeserializer {
     }
 }
 
-struct MyHintComponent: HomepageComponent {
+private struct MyHintComponent: HomepageComponent {
     enum Color: String, XMLAttributeDeserializable {
         case blue, red, yellow
         
@@ -58,10 +78,10 @@ struct MyHintComponent: HomepageComponent {
     let color: Color
     let content: AttributedString
     
-    static func deserialize(_ config: Homepage.Config, _ element: XMLIndexer) throws -> MyHintComponent {
+    static func deserialize(_ context: Homepage.DeserializeContext, _ element: XMLIndexer) throws -> MyHintComponent {
         return try MyHintComponent(
             color: (element.value(ofAttribute: "color")) ?? .blue,
-            content: RichText.parse(element, trimText: config.trimText)
+            content: RichText.parse(element, trimText: context.config.trimText)
         )
     }
     
@@ -70,15 +90,51 @@ struct MyHintComponent: HomepageComponent {
     }
 }
 
-struct RichText {
-    let content: AttributedString
+private struct MyCardComponent: HomepageComponent {
+    let title: String?
+    let foldable: Bool
+    let folded: Bool
+    let body: [any HomepageComponent]
     
-    static func parse(_ indexer: XMLIndexer, trimText: Bool) throws -> AttributedString {
-        return try deserialize(indexer, trimText: trimText).content
+    static func deserialize(_ context: Homepage.DeserializeContext, _ element: XMLIndexer) throws -> MyCardComponent {
+        return try MyCardComponent(
+            title: element.value(ofAttribute: "title"),
+            foldable: element.value(ofAttribute: "foldable") ?? true,
+            folded: element.value(ofAttribute: "folded") ?? true,
+            body: context.componentParser.parseAll(element)
+        )
     }
     
-    static func deserialize(_ indexer: XMLIndexer, trimText: Bool) throws -> RichText {
-        let rawContent = try indexer.value() as String
+    func makeView() -> some View {
+        MyCard(title, foldable: foldable, folded: folded) {
+            ForEach(Array(body.enumerated()), id: \.offset) { _, entry in
+                AnyView(entry.makeView())
+            }
+        }
+    }
+}
+
+private struct TextComponent: HomepageComponent {
+    let content: AttributedString
+    
+    static func deserialize(_ context: Homepage.DeserializeContext, _ element: XMLIndexer) throws -> TextComponent {
+        return try TextComponent(content: RichText.parse(element, trimText: context.config.trimText))
+    }
+    
+    func makeView() -> some View {
+        MyText(content)
+    }
+}
+
+private enum RichText {
+    // 使用 .system 有概率出现字形错误，显式设置 font family 可缓解此问题（应该吧
+    private static let defaultFontFamily = "PingFangSC"
+    
+    static func parse(_ indexer: XMLIndexer, trimText: Bool) throws -> AttributedString {
+        return try parse(rawContent: indexer.value(), trimText: trimText)
+    }
+    
+    static func parse(rawContent: String, trimText: Bool) throws -> AttributedString {
         let content = trimText
         ? rawContent
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -111,11 +167,11 @@ struct RichText {
             currentIndex = content.index(after: closeBrace)
         }
         
-        return .init(content: result)
+        return result
     }
     
     private static func parseBlock(_ block: any StringProtocol) -> AttributedString {
-        let parts = block.split(separator: ";", maxSplits: 1)
+        let parts = block.split(separator: ";", maxSplits: 1, omittingEmptySubsequences: false)
         guard parts.count == 2 else { return .init(block) }
         
         let styles = parts[0].split(separator: ",")
@@ -125,12 +181,12 @@ struct RichText {
             let style = String(style)
             switch style {
             case "bold":
-                result.font = (result.font ?? .system(size: 14)).bold()
+                result.font = (result.font ?? .custom(defaultFontFamily, size: 14)).bold()
             case "italic":
-                result.font = (result.font ?? .system(size: 14)).italic()
+                result.font = (result.font ?? .custom(defaultFontFamily, size: 14)).italic()
             default:
                 if style.hasSuffix("px"), let size = Float(style.dropLast(2)) {
-                    result.font = .system(size: CGFloat(size))
+                    result.font = .custom(defaultFontFamily, size: CGFloat(size))
                 } else if style.hasPrefix("#"), style.count == 7, let hex = UInt(style.dropFirst(), radix: 16) {
                     result.foregroundColor = .init(hex)
                 }

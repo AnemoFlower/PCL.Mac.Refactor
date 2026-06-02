@@ -24,6 +24,11 @@ struct Homepage: XMLObjectDeserialization {
         }
     }
     
+    struct DeserializeContext {
+        let config: Config
+        let componentParser: HomepageComponentParser
+    }
+    
     let author: String?
     let summary: String?
     let config: Config
@@ -31,12 +36,12 @@ struct Homepage: XMLObjectDeserialization {
     
     static func deserialize(_ element: XMLIndexer) throws -> Homepage {
         let config: Config = try Config.deserialize(element["config"])
-        let componentDeserializer = HomepageComponentDeserializer(config: config)
+        let componentParser = HomepageComponentParser(config: config)
         return .init(
             author: element.value(ofAttribute: "author"),
             summary: element.value(ofAttribute: "summary"),
             config: config,
-            components: element.children.compactMap(componentDeserializer.deserialize(_:))
+            components: try componentParser.parseAll(element)
         )
     }
 }
