@@ -197,8 +197,10 @@ private enum RichText {
             switch style {
             case "bold":
                 result.font = (result.font ?? .system(size: 14)).bold()
+                result.richText.isBoldOrItalic = true
             case "italic":
                 result.font = (result.font ?? .system(size: 14)).italic()
+                result.richText.isBoldOrItalic = true
             default:
                 if style.hasSuffix("px"), let size = Float(style.dropLast(2)) {
                     let size = CGFloat(size)
@@ -218,7 +220,7 @@ private enum RichText {
         let runs = text.runs
         for run in runs {
             let substr = text[run.range]
-            if isBoldOrItalic(substr.font) {
+            if substr.richText.isBoldOrItalic == true {
                 result.append(substr)
                 continue
             }
@@ -253,22 +255,22 @@ private enum RichText {
         result.font = usePCLEnglish ? .custom("PCLEnglish", size: size) : .system(size: size)
         return result
     }
-    
-    private static func isBoldOrItalic(_ font: Font?) -> Bool {
-        guard let font else { return false }
-        let description = String(describing: font).lowercased()
-        return description.contains("bold") || description.contains("italic")
-    }
-}
-
-private struct OriginalFontSizeKey: AttributedStringKey {
-    typealias Value = CGFloat
-    static let name = "originalFontSize"
 }
 
 private extension AttributeScopes {
+    struct OriginalFontSizeKey: AttributedStringKey {
+        typealias Value = CGFloat
+        static let name = "originalFontSize"
+    }
+    
+    struct IsBoldOrItalicKey: AttributedStringKey {
+        typealias Value = Bool
+        static let name = "isBoldOrItalic"
+    }
+    
     struct RichTextAttributes: AttributeScope {
         let originalFontSize: OriginalFontSizeKey
+        let isBoldOrItalic: IsBoldOrItalicKey
     }
     
     var richText: RichTextAttributes.Type { RichTextAttributes.self }
