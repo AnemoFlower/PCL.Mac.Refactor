@@ -7,9 +7,10 @@
 
 import Foundation
 import SWXMLHash
+import Core
 
 class HomepageService {
-    public func load(from source: Source) throws(HomepageLoadError) -> Homepage {
+    public func load(from source: Source) async throws(HomepageLoadError) -> Homepage {
         let data: Data
         switch source {
         case .local(let url):
@@ -19,7 +20,16 @@ class HomepageService {
                 throw .fileReadError(underlying: error)
             }
         case .network(let url):
-            fatalError("not implemented")
+            do {
+                let response = try await Requests.get(url, params: ["version": Metadata.appVersion], revalidate: true, timeout: 10)
+                guard (200..<300).contains(response.statusCode) else {
+                    let message = String(data: response.data, encoding: .utf8).map { " (\($0))" } ?? ""
+                    throw SimpleError("服务器返回了错误响应码：\(response.statusCode)" + message)
+                }
+                data = response.data
+            } catch {
+                throw .requetsError(underlying: error)
+            }
         case .data(let providedData):
             data = providedData
         }
@@ -38,6 +48,7 @@ class HomepageService {
     
     public enum HomepageLoadError: LocalizedError {
         case fileReadError(underlying: Error)
+        case requetsError(underlying: Error)
         case stringDecodeError(length: Int)
         case deserializeError(underlying: Error)
         
@@ -45,6 +56,8 @@ class HomepageService {
             switch self {
             case .fileReadError(let underlying):
                 "读取文件失败：\(underlying.localizedDescription)"
+            case .requetsError(let underlying):
+                "网络请求失败：\(underlying.localizedDescription)"
             case .stringDecodeError(let length):
                 "解码字符串失败（\(length) 个字节）"
             case .deserializeError(let underlying):

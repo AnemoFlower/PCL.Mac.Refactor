@@ -14,7 +14,7 @@ class HomepageViewModel: ObservableObject {
     public func load(from source: HomepageService.Source) async throws {
         let task: Task<Homepage, Error> = .detached {
             let service = HomepageService()
-            return try service.load(from: source)
+            return try await service.load(from: source)
         }
         self.loadTask = task
         
