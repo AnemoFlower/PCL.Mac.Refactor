@@ -80,7 +80,7 @@ private struct MyHintComponent: HomepageComponent {
         
         static func deserialize(_ attribute: XMLAttribute) throws -> Color {
             guard let color = Color(rawValue: attribute.text) else {
-                throw XMLDeserializationError.attributeDeserializationFailed(type: "Color", attribute: attribute)
+                throw XMLDeserializationError.attributeDeserializationFailed(type: "MyHint.Color", attribute: attribute)
             }
             return color
         }
@@ -180,7 +180,7 @@ private enum RichText {
             currentIndex = content.index(after: closeBrace)
         }
         
-        result = applyPCLEnglish(to: result)
+        result = applyingFont(to: result)
         
         return result
     }
@@ -215,7 +215,7 @@ private enum RichText {
         return result
     }
     
-    private static func applyPCLEnglish(to text: AttributedString) -> AttributedString {
+    private static func applyingFont(to text: AttributedString) -> AttributedString {
         var result = AttributedString()
         let runs = text.runs
         for run in runs {

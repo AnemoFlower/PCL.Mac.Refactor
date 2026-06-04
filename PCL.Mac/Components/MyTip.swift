@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-
 struct MyTip: View {
     private let text: AttributedString
     private let theme: Theme

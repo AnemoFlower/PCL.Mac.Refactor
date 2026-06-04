@@ -18,18 +18,7 @@ struct MyText: View {
     ///   - size: 文本默认大小。
     ///   - color: 文本默认颜色。
     init(_ text: AttributedString, size: CGFloat = 14, color: Color = .color1) {
-        let fallbackFont: Font = .system(size: size)
-        var processedText = text
-        for run in text.runs {
-            let range = run.range
-            if run.font == nil {
-                processedText[range].font = fallbackFont
-            }
-            if run.foregroundColor == nil {
-                processedText[range].foregroundColor = color
-            }
-        }
-        self.text = processedText
+        self.text = text.applyingMissingDefaultStyle(size: size, color: color)
     }
     
     /// 创建一个普通文本视图。
@@ -40,13 +29,33 @@ struct MyText: View {
     ///   - size: 文本大小。
     ///   - color: 文本颜色。
     init(_ text: String, size: CGFloat = 14, color: Color = .color1) {
-        var attributedText = AttributedString(text)
-        attributedText.font = .custom("PCLEnglish", size: size)
-        attributedText.foregroundColor = color
-        self.text = attributedText
+        self.init(AttributedString(text), size: size, color: color)
     }
     
     var body: some View {
         Text(text)
+    }
+}
+
+extension AttributedString {
+    /// 基于当前 `AttributedString` 创建一个带有默认字体和颜色的 `AttributedString`。
+    ///
+    /// - Parameters:
+    ///   - size: 新字符串的字号，默认为 `14`。
+    ///   - color: 新字符串的颜色，默认为 `Color.color1`。
+    /// - Returns: 一个新的 `AttributedString`。
+    func applyingMissingDefaultStyle(size: CGFloat = 14, color: Color = .color1) -> AttributedString {
+        let font = Font.custom("PCLEnglish", size: size)
+        var result = self
+        for run in result.runs {
+            let range = run.range
+            if run.font == nil {
+                result[range].font = font
+            }
+            if run.foregroundColor == nil {
+                result[range].foregroundColor = color
+            }
+        }
+        return result
     }
 }
