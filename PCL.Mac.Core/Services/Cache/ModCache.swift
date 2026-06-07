@@ -31,7 +31,7 @@ public class ModCache {
     
     public func store(_ mod: Mod, forHash hash: String) { cacheMap[hash] = mod }
     
-    private func save() throws {
+    public func save() throws {
         let data = try JSONEncoder.shared.encode(cacheMap)
         try data.write(to: cacheFileURL)
     }

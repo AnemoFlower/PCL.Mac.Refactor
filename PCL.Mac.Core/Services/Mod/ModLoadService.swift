@@ -18,7 +18,7 @@ public class ModLoadService {
     }
     
     /// 将单个模组文件加载为 `Mod` 结构体。
-    /// - Returns: 一个 `Mod`，若无法识别模组则为 `nil`。
+    /// - Returns: 一个 `Mod`，若无法识别模组则返回 `nil`。
     /// - Throws: `LoadError`
     public func load(from fileURL: URL) async throws(LoadError) -> Mod? {
         var isDirectory: ObjCBool = false
@@ -60,7 +60,7 @@ public class ModLoadService {
         guard FileManager.default.fileExists(atPath: directoryURL.path, isDirectory: &isDirectory) else {
             throw .fileNotExists
         }
-        guard isDirectory.boolValue == false else { throw .foundFile }
+        guard isDirectory.boolValue == true else { throw .foundFile }
         
         guard let enumerator = FileManager.default.enumerator(
             at: directoryURL,
@@ -87,6 +87,10 @@ public class ModLoadService {
             } else {
                 hashes[url] = hash
             }
+        }
+        
+        if hashes.isEmpty {
+            return result
         }
         
         let remoteLookupResult: [String: ModRemoteLookupService.RemoteModInfo]

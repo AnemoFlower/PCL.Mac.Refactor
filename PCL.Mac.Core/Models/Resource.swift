@@ -40,7 +40,7 @@ public struct Mod: Codable, Hashable, Equatable {
     }
     
     private enum CodingKeys: CodingKey {
-        // 不持久化 id
+        // 不持久化存储 id
         case name, version, description, icon, loaders, sources
     }
 }
