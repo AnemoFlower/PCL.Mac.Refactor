@@ -11,13 +11,13 @@ public enum ProjectType: String, Codable {
     case mod, modpack, resourcepack, shader
 }
 
-public enum ResourceIcon: Hashable, Equatable {
+public enum ResourceIcon: Codable, Hashable, Equatable {
     case archiveEntry(path: String)
     case network(url: URL)
 }
 
-public struct Mod: Identifiable, Hashable, Equatable {
-    public enum Source: Hashable, Equatable {
+public struct Mod: Codable, Hashable, Equatable {
+    public enum Source: Codable, Hashable, Equatable {
         case modrinth(projectId: String)
         case curseforge(id: Int32)
     }
@@ -37,5 +37,10 @@ public struct Mod: Identifiable, Hashable, Equatable {
         self.icon = icon
         self.loaders = loaders
         self.sources = sources
+    }
+    
+    private enum CodingKeys: CodingKey {
+        // 不持久化 id
+        case name, version, description, icon, loaders, sources
     }
 }

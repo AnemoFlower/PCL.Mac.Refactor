@@ -9,59 +9,73 @@ import Foundation
 import ZIPFoundation
 
 public class ModLoadService {
-    private let fileURL: URL
-    private let remoteModInfo: RemoteModInfo?
-    private let sources: [Mod.Source]
+    private let remoteLookupService: ModRemoteLookupService
+    private let cache: ModCache
     
-    /// 从本地文件加载一个模组。
-    /// - Parameter fileURL: 模组文件的 `URL`。
-    public init(fileURL: URL) {
-        self.fileURL = fileURL
-        self.remoteModInfo = nil
-        self.sources = []
+    public init(remoteLookupService: ModRemoteLookupService, cache: ModCache) {
+        self.remoteLookupService = remoteLookupService
+        self.cache = cache
     }
     
-    /// 从来自 Modrinth 的文件加载一个模组。
-    /// - Parameters:
-    ///   - fileURL: 模组文件的 `URL`。
-    ///   - project: 该文件对应的 `ModrinthProject`。
-    public init(fileURL: URL, modrinthProject project: ModrinthProject) {
-        self.fileURL = fileURL
-        self.remoteModInfo = .init(
-            name: project.title,
-            description: project.description,
-            icon: project.iconURL
-        )
-        self.sources = [.modrinth(projectId: project.id)]
-    }
-    
-    /// 从来自 CurseForge 的文件加载一个模组。
-    /// - Parameters:
-    ///   - fileURL: 模组文件的 `URL`。
-    ///   - project: 该文件对应的 `CurseForgeMod`。
-    public init(fileURL: URL, curseforgeMod project: CurseForgeMod) {
-        self.fileURL = fileURL
-        self.remoteModInfo = .init(
-            name: project.name,
-            description: project.summary,
-            icon: project.logo.thumbnailURL
-        )
-        self.sources = [.curseforge(id: project.id)]
-    }
-    
-    /// 将模组文件加载为 `Mod` 结构体。
+    /// 将单个模组文件加载为 `Mod` 结构体。
     /// - Returns: 一个 `Mod`，若无法识别模组则为 `nil`。
     /// - Throws: `LoadError`
-    public func load() throws(LoadError) -> Mod? {
+    public func load(from fileURL: URL) async throws(LoadError) -> Mod? {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory) else {
             throw .fileNotExists
         }
-        guard isDirectory.boolValue == false else { throw .notADirectory }
+        guard isDirectory.boolValue == false else { throw .isDirectory }
         
+        let sha1: String
+        do {
+            sha1 = try FileUtils.sha1(of: fileURL)
+        } catch {
+            throw .readError(underlying: error)
+        }
+        
+        if let cached = cache.mod(forHash: sha1) { return cached }
+        
+        let remoteInfo: ModRemoteLookupService.RemoteModInfo?
+        do {
+            remoteInfo = try await remoteLookupService.lookup(hash: sha1)
+        } catch {
+            err("加载 \(fileURL.lastPathComponent) 的远端模组信息失败：\(error.localizedDescription)")
+            remoteInfo = nil
+        }
+        
+        if let mod = try loadModFile(at: fileURL, remoteInfo: remoteInfo) {
+            cache.store(mod, forHash: sha1)
+            return mod
+        }
+        return nil
+    }
+    
+    public enum LoadError: LocalizedError {
+        case fileNotExists
+        case isDirectory
+        case readError(underlying: Error)
+        case extractError(underlying: Error)
+        
+        public var errorDescription: String? {
+            switch self {
+            case .fileNotExists:
+                "模组文件不存在。"
+            case .isDirectory:
+                "期望获得文件，但找到了一个文件夹。"
+            case .readError(let underlying):
+                "读取文件失败：\(underlying.localizedDescription)"
+            case .extractError(let underlying):
+                "解压文件失败：\(underlying.localizedDescription)"
+            }
+        }
+    }
+    
+    
+    private func loadModFile(at url: URL, remoteInfo: ModRemoteLookupService.RemoteModInfo?) throws(LoadError) -> Mod? {
         let archive: Archive
         do {
-            archive = try .init(url: fileURL, accessMode: .read)
+            archive = try .init(url: url, accessMode: .read)
         } catch {
             throw .extractError(underlying: error)
         }
@@ -74,33 +88,17 @@ public class ModLoadService {
         }
         
         guard let meta else { return nil }
+        let icon: ResourceIcon? = meta.icon.map { .archiveEntry(path: $0) } ?? remoteInfo?.icon.map { .network(url: $0) }
+        
         return .init(
-            name: meta.name ?? remoteModInfo?.name ?? meta.id,
+            name: meta.name ?? remoteInfo?.name ?? meta.id,
             version: meta.version,
-            description: meta.description ?? remoteModInfo?.description ?? "",
-            icon: meta.icon.map { .archiveEntry(path: $0) } ?? remoteModInfo?.icon.map { .network(url: $0) },
+            description: meta.description ?? remoteInfo?.description,
+            icon: icon,
             loaders: loaders,
-            sources: sources
+            sources: (remoteInfo?.source).map { [$0] } ?? []
         )
     }
-    
-    public enum LoadError: LocalizedError {
-        case fileNotExists
-        case notADirectory
-        case extractError(underlying: Error)
-        
-        public var errorDescription: String? {
-            switch self {
-            case .fileNotExists:
-                "模组文件不存在。"
-            case .notADirectory:
-                "模组文件是一个文件夹。"
-            case .extractError(let underlying):
-                "解压文件失败：\(underlying.localizedDescription)"
-            }
-        }
-    }
-    
     
     private func loadModMeta(_ archive: Archive, _ path: String, loader: (Data) throws -> ModMeta) -> ModMeta? {
         if let entry = archive[path] {
@@ -129,12 +127,6 @@ public class ModLoadService {
     }
     
     // MARK: - 数据模型
-    
-    private struct RemoteModInfo {
-        let name: String
-        let description: String
-        let icon: URL?
-    }
     
     private struct ModMeta {
         let id: String
