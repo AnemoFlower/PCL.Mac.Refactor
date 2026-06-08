@@ -7,10 +7,12 @@
 
 import Foundation
 import ZIPFoundation
+import TOMLDecoder
 
 public class ModLoadService {
     private let remoteLookupService: ModRemoteLookupService
     private let cache: ModCache
+    private let tomlDecoder: TOMLDecoder = .init()
     
     public init(remoteLookupService: ModRemoteLookupService, cache: ModCache) {
         self.remoteLookupService = remoteLookupService
@@ -127,7 +129,7 @@ public class ModLoadService {
         public var errorDescription: String? {
             switch self {
             case .fileNotExists:
-                "模组文件不存在。"
+                "模组文件或文件夹不存在。"
             case .foundDirectory:
                 "期望获得文件，但找到了一个文件夹。"
             case .foundFile:
@@ -151,11 +153,37 @@ public class ModLoadService {
             throw .extractError(underlying: error)
         }
         
+        var jarManifest: [String: String] = [:]
+        if let entry = archive["META-INF/MANIFEST.MF"] {
+            do {
+                let data = try archive.extract(entry)
+                guard let content = String(data: data, encoding: .utf8) else { throw SimpleError("解码字符串失败。") }
+                jarManifest = JarUtils.parseManifest(content)
+            } catch {
+                err("加载 MANIFEST.MF 失败：\(error.localizedDescription)")
+            }
+        }
+        
         var loaders: [ModLoader] = []
         var meta: ModMeta?
-        if let fabricMeta = loadModMeta(archive, "fabric.mod.json", loader: loadFabric(from:)) {
-            loaders.append(.fabric)
-            if meta == nil { meta = fabricMeta }
+        
+        for (path, loader, type) in [
+            ("fabric.mod.json", loadFabric(from:), ModLoader.fabric),
+            ("META-INF/mods.toml", { try self.loadForge(from: $0, jarManifest: jarManifest) }, .forge),
+            ("META-INF/neoforge.mods.toml", { try self.loadForge(from: $0, jarManifest: jarManifest) }, .neoforge)
+        ] {
+            if let entry = archive[path] {
+                do {
+                    let data = try archive.extract(entry)
+                    let parsedMeta = try loader(data)
+                    loaders.append(type)
+                    if meta == nil { meta = parsedMeta }
+                } catch let error as DecodingError {
+                    err("解析模组元数据失败：\(error)")
+                } catch {
+                    err("解压 \(path) 失败：\(error.localizedDescription)")
+                }
+            }
         }
         
         guard let meta else { return nil }
@@ -212,6 +240,23 @@ public class ModLoadService {
         )
     }
     
+    private func loadForge(from data: Data, jarManifest: [String: String]) throws -> ModMeta {
+        var values: [String: String] = [:]
+        
+        if let version = jarManifest["Implementation-Version"] {
+            values["file.jarVersion"] = version
+        }
+        
+        let forgeMeta: ForgeMeta = try tomlDecoder.decode(ForgeMeta.self, from: data)
+        return .init(
+            id: forgeMeta.modId,
+            name: forgeMeta.displayName,
+            description: forgeMeta.description,
+            version: forgeMeta.version.replacingPlaceholders(with: values, dollarPrefix: true),
+            icon: forgeMeta.logoFile
+        )
+    }
+    
     // MARK: - 数据模型
     
     private struct ModMeta {
@@ -229,5 +274,33 @@ public class ModLoadService {
         let name: String?
         let description: String?
         let icon: String?
+    }
+    
+    private struct ForgeMeta: Decodable {
+        let modId: String
+        let version: String
+        let displayName: String?
+        let description: String?
+        let logoFile: String?
+        
+        private enum CodingKeys: CodingKey {
+            case mods
+        }
+        
+        private enum ModCodingKeys: CodingKey {
+            case modId, version, displayName, description, logoFile
+        }
+        
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            var modsContainer = try container.nestedUnkeyedContainer(forKey: .mods)
+            
+            let first = try modsContainer.nestedContainer(keyedBy: ModCodingKeys.self)
+            self.modId = try first.decode(String.self, forKey: .modId)
+            self.version = try first.decode(String.self, forKey: .version)
+            self.displayName = try first.decodeIfPresent(String.self, forKey: .displayName)
+            self.description = try first.decodeIfPresent(String.self, forKey: .description)
+            self.logoFile = try first.decodeIfPresent(String.self, forKey: .logoFile)
+        }
     }
 }
