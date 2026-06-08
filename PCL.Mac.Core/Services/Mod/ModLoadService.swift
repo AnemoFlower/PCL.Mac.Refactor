@@ -81,11 +81,13 @@ public class ModLoadService {
         var result: [URL: Mod] = [:]
         var hashes: [URL: String] = [:]
         enumerateFiles { url in
-            let hash = try FileUtils.sha1(of: url)
-            if let mod = cache.mod(forHash: hash) {
-                result[url] = mod
-            } else {
-                hashes[url] = hash
+            try autoreleasepool {
+                let hash = try FileUtils.sha1(of: url)
+                if let mod = cache.mod(forHash: hash) {
+                    result[url] = mod
+                } else {
+                    hashes[url] = hash
+                }
             }
         }
         

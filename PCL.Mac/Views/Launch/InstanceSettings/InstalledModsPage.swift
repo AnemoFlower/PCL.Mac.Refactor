@@ -71,6 +71,9 @@ struct InstalledModsPage: View {
                 loadingVM.fail(with: "加载模组列表失败：\(error.localizedDescription)")
             }
         }
+        .onDisappear {
+            viewModel.mods = nil
+        }
     }
 }
 
