@@ -28,19 +28,29 @@ public struct Mod: Codable, Hashable, Equatable {
     public let description: String?
     public let icon: ResourceIcon?
     public let loaders: [ModLoader]
+    public let tags: [String]
     public let sources: [Source]
     
-    public init(name: String, version: String, description: String?, icon: ResourceIcon?, loaders: [ModLoader], sources: [Source]) {
+    public init(
+        name: String,
+        version: String,
+        description: String?,
+        icon: ResourceIcon?,
+        loaders: [ModLoader],
+        tags: [String],
+        sources: [Source]
+    ) {
         self.name = name
         self.version = version
         self.description = description
         self.icon = icon
         self.loaders = loaders
+        self.tags = tags
         self.sources = sources
     }
     
     private enum CodingKeys: CodingKey {
         // 不持久化存储 id
-        case name, version, description, icon, loaders, sources
+        case name, version, description, icon, loaders, tags, sources
     }
 }

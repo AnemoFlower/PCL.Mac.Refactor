@@ -13,6 +13,7 @@ public class ModLoadService {
     private let remoteLookupService: ModRemoteLookupService
     private let cache: ModCache
     private let tomlDecoder: TOMLDecoder = .init()
+    private let validPathExtensions = ["jar", "disabled"]
     
     public init(remoteLookupService: ModRemoteLookupService, cache: ModCache) {
         self.remoteLookupService = remoteLookupService
@@ -71,7 +72,7 @@ public class ModLoadService {
         
         func enumerateFiles(body: (URL) throws -> Void) {
             for case let fileURL as URL in enumerator {
-                guard fileURL.pathExtension == "jar" && (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+                guard validPathExtensions.contains(fileURL.pathExtension) && (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
                 do {
                     try body(fileURL)
                 } catch {
@@ -226,6 +227,7 @@ public class ModLoadService {
             description: meta.description ?? remoteInfo?.description,
             icon: icon,
             loaders: loaders,
+            tags: remoteInfo?.tags ?? [],
             sources: (remoteInfo?.source).map { [$0] } ?? []
         )
     }

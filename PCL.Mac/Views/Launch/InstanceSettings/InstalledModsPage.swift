@@ -106,16 +106,22 @@ private struct ResourceListItem: View {
                 .foregroundStyle(Color.color1)
                 
                 VStack(alignment: .leading) {
-                    HStack(spacing: 0) {
+                    HStack(alignment: .center, spacing: 0) {
                         MyText(resource.name)
-                            .lineLimit(1)
-                        MyText(" | \(resource.version)", color: .colorGray3)
+                        MyText(" | \(resource.fileName)", size: 12, color: .colorGray3)
+                        HStack(spacing: 3) {
+                            ForEach(resource.tags, id: \.self) { tag in
+                                MyTag(tag, labelColor: .colorGray2, backgroundColor: .black.opacity(0.05), size: 12)
+                            }
+                        }
+                        .padding(.leading, 3)
                     }
-                    MyText("\(resource.version) | \(resource.description)", color: .colorGray3)
-                        .lineLimit(1)
+                    MyText("\(resource.version) | \(resource.description)", size: 12, color: .colorGray3)
                 }
+                .lineLimit(1)
+                .textSelection(.enabled)
                 
-                Spacer()
+                Spacer(minLength: 0)
             }
         }
     }

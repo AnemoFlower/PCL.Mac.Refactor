@@ -14,16 +14,20 @@ struct ModDisplayModel {
     let name: String
     let version: String
     let description: String
+    let tags: [String]
     let icon: ListItem.Image
+    let fileName: String
     
-    init(name: String, version: String, description: String, icon: ListItem.Image?) {
+    init(name: String, version: String, description: String, tags: [String], icon: ListItem.Image?, fileName: String) {
         self.name = name
         self.version = version
         self.description = description
+        self.tags = tags
         self.icon = icon ?? .resource(.iconModLogo)
+        self.fileName = fileName
     }
     
-    init(_ mod: Mod) {
+    init(_ url: URL, _ mod: Mod) {
         let icon: ListItem.Image?
         if let modIcon = mod.icon {
             switch modIcon {
@@ -45,7 +49,9 @@ struct ModDisplayModel {
             name: mod.name,
             version: mod.version,
             description: mod.description ?? "",
-            icon: icon
+            tags: mod.tags.map(ProjectListItemModel.localizeTag(_:)),
+            icon: icon,
+            fileName: url.lastPathComponent
         )
     }
 }

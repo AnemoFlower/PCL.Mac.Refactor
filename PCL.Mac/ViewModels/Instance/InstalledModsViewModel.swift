@@ -72,7 +72,7 @@ class InstalledModsViewModel: ObservableObject {
                 let resources = try loadResult[start..<end]
                     .map {
                         try Task.checkCancellation()
-                        return ModDisplayModel($0.1)
+                        return ModDisplayModel($0.0, $0.1)
                     }
                 await MainActor.run {
                     self.resources = resources

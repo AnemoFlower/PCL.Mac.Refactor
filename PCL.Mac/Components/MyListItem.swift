@@ -67,6 +67,7 @@ struct MyListItem<Content: View>: View {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(hovered ? Color.color2.opacity(0.1) : .clear)
                     .scaleEffect(backgroundScale)
+                    .allowsHitTesting(false)
             }
             .onHover { hovered in
                 withAnimation(.spring(response: 0.2)) {

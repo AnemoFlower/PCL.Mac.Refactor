@@ -53,12 +53,14 @@ public class ModRemoteLookupService {
     public struct RemoteModInfo {
         public let name: String
         public let description: String
+        public let tags: [String]
         public let icon: URL?
         public let source: Mod.Source
         
-        public init(name: String, description: String, icon: URL?, source: Mod.Source) {
+        public init(name: String, description: String, tags: [String], icon: URL?, source: Mod.Source) {
             self.name = name
             self.description = description
+            self.tags = tags
             self.icon = icon
             self.source = source
         }
@@ -67,6 +69,7 @@ public class ModRemoteLookupService {
             self.init(
                 name: modrinthProject.title,
                 description: modrinthProject.description,
+                tags: modrinthProject.categories,
                 icon: modrinthProject.iconURL,
                 source: .modrinth(projectId: modrinthProject.id)
             )
@@ -76,6 +79,7 @@ public class ModRemoteLookupService {
             self.init(
                 name: curseforgeMod.name,
                 description: curseforgeMod.summary,
+                tags: [],
                 icon: curseforgeMod.logo.thumbnailURL,
                 source: .curseforge(id: curseforgeMod.id)
             )
