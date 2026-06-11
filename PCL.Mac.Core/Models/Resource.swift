@@ -30,6 +30,7 @@ public struct Mod: Codable, Hashable, Equatable {
     public let loaders: [ModLoader]
     public let tags: [String]
     public let sources: [Source]
+    public let disabled: Bool
     
     public init(
         name: String,
@@ -38,7 +39,8 @@ public struct Mod: Codable, Hashable, Equatable {
         icon: ResourceIcon?,
         loaders: [ModLoader],
         tags: [String],
-        sources: [Source]
+        sources: [Source],
+        disabled: Bool
     ) {
         self.name = name
         self.version = version
@@ -47,10 +49,11 @@ public struct Mod: Codable, Hashable, Equatable {
         self.loaders = loaders
         self.tags = tags
         self.sources = sources
+        self.disabled = disabled
     }
     
     private enum CodingKeys: CodingKey {
         // 不持久化存储 id
-        case name, version, description, icon, loaders, tags, sources
+        case name, version, description, icon, loaders, tags, sources, disabled
     }
 }

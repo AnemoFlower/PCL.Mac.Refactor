@@ -228,7 +228,8 @@ public class ModLoadService {
             icon: icon,
             loaders: loaders,
             tags: remoteInfo?.tags ?? [],
-            sources: (remoteInfo?.source).map { [$0] } ?? []
+            sources: (remoteInfo?.source).map { [$0] } ?? [],
+            disabled: url.pathExtension == "disabled"
         )
     }
     

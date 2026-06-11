@@ -17,14 +17,24 @@ struct ModDisplayModel {
     let tags: [String]
     let icon: ListItem.Image
     let fileName: String
+    let disabled: Bool
     
-    init(name: String, version: String, description: String, tags: [String], icon: ListItem.Image?, fileName: String) {
+    init(
+        name: String,
+        version: String,
+        description: String,
+        tags: [String],
+        icon: ListItem.Image?,
+        fileName: String,
+        disabled: Bool
+    ) {
         self.name = name
         self.version = version
         self.description = description
         self.tags = tags
         self.icon = icon ?? .resource(.iconModLogo)
         self.fileName = fileName
+        self.disabled = disabled
     }
     
     init(_ url: URL, _ mod: Mod) {
@@ -51,7 +61,8 @@ struct ModDisplayModel {
             description: mod.description ?? "",
             tags: mod.tags.map(ProjectListItemModel.localizeTag(_:)),
             icon: icon,
-            fileName: url.lastPathComponent
+            fileName: url.lastPathComponent,
+            disabled: mod.disabled
         )
     }
 }
