@@ -73,18 +73,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 try FileManager.default.removeItem(at: url)
             }
         }
-        executeTask("从缓存中加载版本列表") {
-            let cacheURL: URL = URLConstants.cacheURL.appending(path: "version_manifest.json")
+        
+        do {
+            let cacheURL = URLConstants.cacheURL.appending(path: "version_manifest.json")
             if FileManager.default.fileExists(atPath: cacheURL.path) {
-                let cachedData: Data = try .init(contentsOf: URLConstants.cacheURL.appending(path: "version_manifest.json"))
-                let manifest: VersionManifest = try JSONDecoder.shared.decode(VersionManifest.self, from: cachedData)
-                CoreState.versionManifest = manifest
-            } else {
-                self.executeAsyncTask("拉取版本列表") {
-                    let response = try await Requests.get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
-                    let manifest: VersionManifest = try response.decode(VersionManifest.self)
-                    CoreState.versionManifest = manifest
-                    try response.data.write(to: cacheURL)
+                executeTask("从缓存中加载版本列表") {
+                    let cachedData = try Data(contentsOf: URLConstants.cacheURL.appending(path: "version_manifest.json"))
+                    let manifest = try JSONDecoder.shared.decode(VersionManifest.self, from: cachedData)
+                    VersionManifest.shared = manifest
                 }
             }
         }

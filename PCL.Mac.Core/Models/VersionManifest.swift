@@ -10,6 +10,7 @@ import SwiftyJSON
 
 /// https://zh.minecraft.wiki/w/Version_manifest.json#JSON格式
 public struct VersionManifest: Decodable, Equatable {
+    public static var shared: VersionManifest!
     public let latestRelease: String
     public let latestSnapshot: String?
     public let versions: [Version]
@@ -67,7 +68,7 @@ public struct VersionManifest: Decodable, Equatable {
             
             if let calendar {
                 let components: DateComponents = calendar.dateComponents([.month, .day], from: releaseTime)
-                if let month: Int = components.month, let day: Int = components.day {
+                if let month = components.month, let day = components.day {
                     return month == 4 && day == 1
                 }
             }
@@ -98,5 +99,21 @@ public struct VersionManifest: Decodable, Equatable {
     private struct Latest: Decodable {
         public let release: String
         public let snapshot: String
+    }
+}
+
+public extension VersionManifest {
+    @discardableResult
+    static func load(revalidate: Bool = false) async throws -> VersionManifest {
+        let cacheURL = URLConstants.cacheURL.appending(path: "version_manifest.json")
+        let response = try await Requests.get("https://launchermeta.mojang.com/mc/game/version_manifest.json", revalidate: revalidate)
+        
+        let manifest = try response.decode(VersionManifest.self)
+        if Self.shared == nil || Self.shared != manifest {
+            log("刷新版本清单成功")
+            Self.shared = manifest
+            try response.data.write(to: cacheURL)
+        }
+        return manifest
     }
 }

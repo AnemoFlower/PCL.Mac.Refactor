@@ -81,11 +81,11 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
         guard let gameVersions = project.gameVersions else {
             return (description + "未知", false)
         }
-        let releaseVersions: [String] = gameVersions.filter { CoreState.versionManifest.version(for: $0)?.type == .release }
+        let releaseVersions: [String] = gameVersions.filter { VersionManifest.shared.version(for: $0)?.type == .release }
         guard !releaseVersions.isEmpty else {
             return (description + (modLoaders.count == 1 ? "" : "仅") + "快照版本", true)
         }
-        description += generateGameVersionDescription(releaseVersions, latestVersion: CoreState.versionManifest.latestRelease)
+        description += generateGameVersionDescription(releaseVersions, latestVersion: VersionManifest.shared.latestRelease)
         
         return (description, false)
     }
@@ -162,7 +162,7 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
         
         /// 检查当前版本是不是该年份（26）的最后一个版本（正式更新，例如 26.4）。
         /// 在该版本号的格式为旧版格式时，此函数一定会返回 `false`。
-        public func isYearlyLatest(_ manifest: VersionManifest = CoreState.versionManifest) -> Bool {
+        public func isYearlyLatest(_ manifest: VersionManifest = .shared) -> Bool {
             if major == 1 { return false }
             let yearlyLatest: VersionPair? = manifest.versions
                 .filter { $0.type == .release && $0.id.starts(with: "\(major).") }

@@ -39,7 +39,7 @@ public enum MinecraftInstallTask {
                 FileManager.default.createFile(atPath: model.runningDirectory.appending(path: ".incomplete").path, contents: nil)
             },
             .init(0, "下载客户端 JSON 文件") { task, model in
-                guard let versionManifest = CoreState.versionManifest else {
+                guard let versionManifest = VersionManifest.shared else {
                     err("CoreState.versionManifest 为空")
                     throw TaskError.unknownError
                 }
