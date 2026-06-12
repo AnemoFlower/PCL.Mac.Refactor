@@ -84,6 +84,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+        executeAsyncTask("拉取最新版本列表") {
+            try await VersionManifest.load(revalidate: true)
+        }
         
         if shouldInit {
             _ = LauncherConfig.shared
