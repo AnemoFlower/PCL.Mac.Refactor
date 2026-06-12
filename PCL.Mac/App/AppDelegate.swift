@@ -63,6 +63,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         LogManager.shared.enableLogging()
         log("正在启动 PCL.Mac.Refactor \(Metadata.appVersion)")
+        
+        debug("系统信息：macOS \(ProcessInfo.processInfo.operatingSystemVersionString) \(Architecture.systemArchitecture())")
+        
         _ = Secrets.shared
         
         executeTask("开启 SwiftScaffolding 日志", silent: true) {
