@@ -56,9 +56,9 @@ public enum MinecraftInstanceLoader {
         }
         
         let version: MinecraftVersion?
-        if let metaVersion = metadata?.version {
+        if let metaVersion = metadata?.version, VersionManifest.shared?.contains(metaVersion.id) ?? true {
             version = metaVersion
-        } else if VersionManifest.shared?.version(for: id) != nil {
+        } else if VersionManifest.shared?.contains(id) ?? true {
             version = .init(id)
         } else {
             version = await detectVersion(runningDirectory: runningDirectory, manifest: manifest)

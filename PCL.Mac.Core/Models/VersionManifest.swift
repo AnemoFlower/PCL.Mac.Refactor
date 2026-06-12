@@ -87,6 +87,9 @@ public struct VersionManifest: Decodable, Equatable {
     /// - Returns: `Version` 对象。
     public func version(for id: String) -> Version? { versionMap[id] }
     
+    /// 获取版本清单中是否包含带有指定 `id` 的版本。
+    public func contains(_ id: String) -> Bool { versionMap[id] != nil }
+    
     // MARK: - Decodables
     
     private struct Latest: Decodable {
