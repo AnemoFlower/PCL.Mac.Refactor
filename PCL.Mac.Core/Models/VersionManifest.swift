@@ -14,6 +14,7 @@ public struct VersionManifest: Decodable, Equatable {
     public let latestRelease: String
     public let latestSnapshot: String?
     public let versions: [Version]
+    private let versionMap: [String: Version]
     
     private enum CodingKeys: String, CodingKey {
         case latest, versions
@@ -25,6 +26,7 @@ public struct VersionManifest: Decodable, Equatable {
         self.latestRelease = latest.release
         self.latestSnapshot = latest.release == latest.snapshot ? nil : latest.snapshot
         self.versions = try container.decode([Version].self, forKey: .versions)
+        self.versionMap = versions.reduce(into: [:]) { $0[$1.id] = $1 }
     }
     
     public struct Version: Decodable, Hashable {
@@ -80,19 +82,10 @@ public struct VersionManifest: Decodable, Equatable {
         }
     }
     
-    /// 根据版本号获取在 `versions` 中的顺序（版本号越大，返回值越小）。
-    /// - Parameter id: 版本号。
-    /// - Returns: 在 `versions` 中的顺序。
-    public func ordinal(of id: String) -> Int {
-        return versions.firstIndex(where: { $0.id == id }) ?? -1
-    }
-    
     /// 获取版本号对应的 `Version` 对象。
     /// - Parameter id: 版本号。
     /// - Returns: `Version` 对象。
-    public func version(for id: String) -> Version? {
-        return versions.first(where: { $0.id == id })
-    }
+    public func version(for id: String) -> Version? { versionMap[id] }
     
     // MARK: - Decodables
     
