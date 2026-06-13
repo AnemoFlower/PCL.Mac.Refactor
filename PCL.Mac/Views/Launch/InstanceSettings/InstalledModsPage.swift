@@ -146,14 +146,12 @@ private struct ResourceListItem: View {
     }
     
     private func toggleDisabled() {
-        Task {
-            do {
-                try await viewModel.toggleDisabled(resource)
-            } catch {
-                let type = resource.disabled ? "启用" : "禁用"
-                err("\(type)模组失败：\(error.localizedDescription)")
-                hint("\(type)模组失败：\(error.localizedDescription)", type: .critical)
-            }
+        do {
+            try viewModel.toggleDisabled(resource)
+        } catch {
+            let type = resource.disabled ? "启用" : "禁用"
+            err("\(type)模组失败：\(error.localizedDescription)")
+            hint("\(type)模组失败：\(error.localizedDescription)", type: .critical)
         }
     }
 }

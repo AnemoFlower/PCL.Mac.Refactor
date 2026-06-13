@@ -94,7 +94,7 @@ class InstalledModsViewModel: ObservableObject {
         }
     }
     
-    func toggleDisabled(_ resource: ResourceDisplayModel) async throws {
+    func toggleDisabled(_ resource: ResourceDisplayModel) throws {
         let newURL: URL
         if resource.disabled {
             newURL = resource.url.deletingPathExtension()
