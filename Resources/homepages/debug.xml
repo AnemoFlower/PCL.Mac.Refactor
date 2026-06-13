@@ -41,4 +41,11 @@
         The payload is optimized for production. It successfully balances extreme technical utility with absolute semantic nonsense. It {italic;SHOULD} remain in the active layout tree indefinitely.
         {12px, italic, #888888;Notice: This diagnostic report was generated automatically by an advanced AI system. Any psychological urge to follow the target entity upon reading is entirely within expected telemetry parameters.}
     </MyCard>
+    
+    <MyCard title="Style 测试">
+        <text background="#FF6B6B">{40px;红色背景}</text>
+        <text background="linearGradient(0, 0, 1, 0, #FF6B6B, #FF8E53, #FFB347, #FFD700, #32CD32, #4ECDC4, #6C63FF)">{40px;线性渐变背景}</text>
+        <text background="radialGradient(0, 30, 0.5, 0.5, #FF6B6B, #FF8E53, #FFB347, #FFD700, #32CD32, #4ECDC4, #6C63FF)">{40px;径向渐变背景}</text>
+        <text background="angularGradient(-90, 270, 0.5, 0.5, #FF6B6B, #FF8E53, #FFB347, #FFD700, #32CD32, #4ECDC4, #6C63FF)">{40px;圆锥渐变背景}</text>
+    </MyCard>
 </homepage>

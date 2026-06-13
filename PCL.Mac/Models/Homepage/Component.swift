@@ -30,7 +30,7 @@ struct HomepageComponentParser {
         for element in element.children {
             if let xmlElement = element as? SWXMLHash.XMLElement {
                 if !textBuffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    result.append(TextComponent(content: try RichText.parse(rawContent: textBuffer, trimText: config.trimText)))
+                    result.append(TextComponent(content: try RichText.parse(rawContent: textBuffer, trimText: config.trimText), style: .init()))
                 }
                 textBuffer = ""
                 
@@ -43,7 +43,7 @@ struct HomepageComponentParser {
         }
         
         if !textBuffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            result.append(TextComponent(content: try RichText.parse(rawContent: textBuffer, trimText: config.trimText)))
+            result.append(TextComponent(content: try RichText.parse(rawContent: textBuffer, trimText: config.trimText), style: .init()))
         }
         
         return result
@@ -127,13 +127,18 @@ private struct MyCardComponent: HomepageComponent {
 
 private struct TextComponent: HomepageComponent {
     let content: AttributedString
+    let style: Style
     
     static func deserialize(_ context: Homepage.DeserializeContext, _ element: XMLIndexer) throws -> TextComponent {
-        return try TextComponent(content: RichText.parse(element, trimText: context.config.trimText))
+        return try TextComponent(
+            content: RichText.parse(element, trimText: context.config.trimText),
+            style: .deserialize(element)
+        )
     }
     
     func makeView() -> some View {
         MyText(content)
+            .applyingStyle(style)
     }
 }
 
@@ -185,6 +190,26 @@ private enum RichText {
         return result
     }
     
+    static func parseColor(from text: String) -> Color? {
+        let hexString = text.dropFirst()
+        let hex: UInt?
+        let alpha: Double
+        
+        if hexString.count == 6 {
+            hex = .init(hexString, radix: 16)
+            alpha = 1
+        } else if hexString.count == 8 {
+            hex = .init(hexString.dropFirst(2), radix: 16)
+            guard let a = UInt8(hexString.prefix(2), radix: 16) else { return nil }
+            alpha = Double(a) / 255.0
+        } else {
+            return nil
+        }
+        
+        guard let hex else { return nil }
+        return .init(hex, alpha: alpha)
+    }
+    
     private static func parseBlock(_ block: any StringProtocol) -> AttributedString {
         let parts = block.split(separator: ";", maxSplits: 1, omittingEmptySubsequences: false)
         guard parts.count == 2 else { return .init(block) }
@@ -206,8 +231,8 @@ private enum RichText {
                     let size = CGFloat(size)
                     result.font = .system(size: size)
                     result.richText.originalFontSize = size
-                } else if style.hasPrefix("#"), style.count == 7, let hex = UInt(style.dropFirst(), radix: 16) {
-                    result.foregroundColor = .init(hex)
+                } else if style.hasPrefix("#"), let color = parseColor(from: style) {
+                    result.foregroundColor = color
                 }
             }
         }
@@ -274,4 +299,140 @@ private extension AttributeScopes {
     }
     
     var richText: RichTextAttributes.Type { RichTextAttributes.self }
+}
+
+private struct Style: XMLObjectDeserialization {
+    enum ColorStyle: XMLAttributeDeserializable {
+        case solid(color: Color)
+        case linearGradient(LinearGradient)
+        case radialGradient(RadialGradient)
+        case angularGradient(AngularGradient)
+        
+        static func deserialize(_ attribute: XMLAttribute) throws -> Style.ColorStyle {
+            let text = attribute.text
+            if text.starts(with: "#") {
+                guard let color = RichText.parseColor(from: text) else {
+                    throw XMLDeserializationError.attributeDeserializationFailed(type: "ColorStyle.solid", attribute: attribute)
+                }
+                return .solid(color: color)
+            }
+            
+            let error = XMLDeserializationError.attributeDeserializationFailed(type: "ColorStyle", attribute: attribute)
+            
+            let input = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let typeEndIndex = input.firstIndex(of: "(") ?? input.endIndex
+            let type = String(input[..<typeEndIndex]).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            
+            guard let openParenIndex = input.firstIndex(of: "("),
+                  let closeParenIndex = input.lastIndex(of: ")"),
+                  openParenIndex < closeParenIndex else {
+                throw error
+            }
+            let args = input[input.index(after: openParenIndex)..<closeParenIndex]
+                .split(separator: ",").map {
+                    String($0).trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            
+            switch type {
+            case "lineargradient":
+                guard args.count >= 5,
+                      let startX = Float(args[0]), let startY = Float(args[1]),
+                      let endX = Float(args[2]), let endY = Float(args[3])
+                else { throw error }
+                
+                let colors = args.dropFirst(4).compactMap { RichText.parseColor(from: $0) }
+                guard colors.count == args.count - 4 else { throw error }
+                
+                return .linearGradient(
+                    .init(
+                        colors: colors,
+                        startPoint: .init(x: .init(startX), y: .init(startY)),
+                        endPoint: .init(x: .init(endX), y: .init(endY))
+                    )
+                )
+            case "radialgradient":
+                guard args.count >= 5,
+                      let startRadius = Float(args[0]), let endRadius = Float(args[1]),
+                      let centerX = Float(args[2]), let centerY = Float(args[3])
+                else { throw error }
+                
+                let colors = args.dropFirst(4).compactMap { RichText.parseColor(from: $0) }
+                guard colors.count == args.count - 4 else { throw error }
+                
+                return .radialGradient(
+                    .init(
+                        colors: colors,
+                        center: .init(x: .init(centerX), y: .init(centerY)),
+                        startRadius: .init(startRadius),
+                        endRadius: .init(endRadius)
+                    )
+                )
+            
+            case "angulargradient":
+                guard args.count >= 4,
+                      let angle = Double(args[0]),
+                      let centerX = Float(args[2]), let centerY = Float(args[3])
+                else { throw error }
+                
+                let colors = args.dropFirst(4).compactMap { RichText.parseColor(from: $0) }
+                guard colors.count == args.count - 4 else { throw error }
+                
+                return .angularGradient(
+                    .init(
+                        colors: colors,
+                        center: .init(x: .init(centerX), y: .init(centerY)),
+                        angle: .degrees(angle)
+                    )
+                )
+            default:
+                err("未知的 ColorStyle 类型：\(type)")
+                throw error
+            }
+        }
+        
+        var style: any ShapeStyle {
+            switch self {
+            case .solid(let color): color
+            case .linearGradient(let linearGradient): linearGradient
+            case .radialGradient(let radialGradient): radialGradient
+            case .angularGradient(let angularGradient): angularGradient
+            }
+        }
+    }
+    
+    let background: any ShapeStyle
+    let border: (style: any ShapeStyle, width: CGFloat)
+    let cornerRadius: CGFloat
+    
+    init() {
+        self.background = .clear
+        self.border = (Color.clear, width: 0)
+        self.cornerRadius = 0
+    }
+    
+    init(
+        background: any ShapeStyle,
+        border: (style: any ShapeStyle, width: CGFloat),
+        cornerRadius: CGFloat
+    ) {
+        self.background = background
+        self.border = border
+        self.cornerRadius = cornerRadius
+    }
+    
+    static func deserialize(_ element: XMLIndexer) throws -> Style {
+        return .init(
+            background: (element.value(ofAttribute: "background") as ColorStyle?)?.style ?? .clear,
+            border: (Color.clear, width: 0),
+            cornerRadius: 0
+        )
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyingStyle(_ style: Style) -> some View {
+        self
+            .background(AnyShapeStyle(style.background))
+    }
 }
