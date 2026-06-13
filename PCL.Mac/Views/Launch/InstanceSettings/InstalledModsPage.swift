@@ -136,11 +136,27 @@ private struct ResourceListItem: View {
                 
                 if hovered {
                     HStack {
+                        ListItemButton(.iconAbout, clickPerform: viewInfo)
                         ListItemButton(resource.disabled ? .btnEnable : .btnDisable, clickPerform: toggleDisabled)
                             .animation(.easeInOut(duration: 0.1), value: resource.disabled)
                     }
                     .padding(.trailing, 4)
                 }
+            }
+        }
+    }
+    
+    private func viewInfo() {
+        Task {
+            do {
+                guard let info = try await viewModel.loadInfo(for: resource) else {
+                    hint("未找到 \(resource.fileName) 对应的远端资源信息！", type: .critical)
+                    return
+                }
+                AppRouter.shared.append(.projectInstall(project: info))
+            } catch {
+                err("获取资源信息失败：\(error.localizedDescription)")
+                hint("获取资源信息失败：\(error.localizedDescription)", type: .critical)
             }
         }
     }

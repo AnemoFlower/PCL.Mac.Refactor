@@ -107,4 +107,18 @@ class InstalledModsViewModel: ObservableObject {
         resource.disabled.toggle()
         resource.url = newURL
     }
+    
+    func loadInfo(for resource: ResourceDisplayModel) async throws -> ProjectListItemModel? {
+        for source in resource.sources {
+            if case .modrinth(let projectId) = source {
+                do {
+                    let project = try await ModrinthAPIClient.shared.project(projectId)
+                    return .init(project)
+                } catch {
+                    throw SimpleError("查询 Modrinth Project 失败：\(error.localizedDescription)")
+                }
+            }
+        }
+        return nil
+    }
 }

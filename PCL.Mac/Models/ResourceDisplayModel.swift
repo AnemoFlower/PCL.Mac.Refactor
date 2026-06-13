@@ -16,6 +16,7 @@ class ResourceDisplayModel: ObservableObject, Hashable, Equatable {
     let description: String
     let tags: [String]
     let icon: ListItem.Image
+    let sources: [Mod.Source]
     @Published var url: URL
     @Published var disabled: Bool
     
@@ -27,6 +28,7 @@ class ResourceDisplayModel: ObservableObject, Hashable, Equatable {
         description: String,
         tags: [String],
         icon: ListItem.Image?,
+        sources: [Mod.Source],
         url: URL,
         disabled: Bool
     ) {
@@ -35,6 +37,7 @@ class ResourceDisplayModel: ObservableObject, Hashable, Equatable {
         self.description = description
         self.tags = tags
         self.icon = icon ?? .resource(.iconModLogo)
+        self.sources = sources
         self.url = url
         self.disabled = disabled
     }
@@ -63,6 +66,7 @@ class ResourceDisplayModel: ObservableObject, Hashable, Equatable {
             description: mod.description ?? "",
             tags: mod.tags.map(ProjectListItemModel.localizeTag(_:)),
             icon: icon,
+            sources: mod.sources,
             url: url,
             disabled: url.pathExtension == "disabled"
         )
