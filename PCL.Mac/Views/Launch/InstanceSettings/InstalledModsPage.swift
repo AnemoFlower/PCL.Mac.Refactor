@@ -107,7 +107,12 @@ private struct ResourceListItem: View {
                 
                 VStack(alignment: .leading) {
                     HStack(alignment: .center, spacing: 0) {
-                        MyText((resource.disabled ? "（已禁用）" : "") + resource.name)
+                        if #available(macOS 13, *) {
+                            MyText(resource.name)
+                                .strikethrough(resource.disabled)
+                        } else {
+                            MyText((resource.disabled ? "（已禁用）" : "") + resource.name)
+                        }
                         MyText(" | \(resource.fileName)", size: 12, color: .colorGray3)
                         HStack(spacing: 3) {
                             ForEach(resource.tags, id: \.self) { tag in
