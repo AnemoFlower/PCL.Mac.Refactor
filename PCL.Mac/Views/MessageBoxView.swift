@@ -67,11 +67,8 @@ struct MessageBoxView: View {
             case .text(let text):
                 MyText(text)
             case .list(let items):
-                ScrollView {
-                    MyList(items: items, onSelect: { self.selectedItemIndex = $0 })
-                        .padding(.horizontal, 4)
-                }
-                .frame(maxHeight: 240)
+                MyList(items: items, onSelect: { self.selectedItemIndex = $0 })
+                    .padding(.horizontal, 4)
             case .input(_, let placeholder):
                 MyTextField(text: $inputText, placeholder: placeholder ?? "")
             }
