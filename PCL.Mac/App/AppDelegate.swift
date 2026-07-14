@@ -69,6 +69,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         _ = Secrets.shared
         
         DownloadSourceManager.shared = .init(policy: LauncherConfig.shared.downloadSourcePolicy, curseforgeApiKey: Secrets.shared.curseforgeApiKey)
+        
+        ClientManifest.deduplicateLibraries = LauncherConfig.shared.flags.deduplicateLibraries
+        
         executeAsyncTask("刷新地区信息", silent: true) {
             await DownloadSourceManager.shared.refreshRegion()
         }

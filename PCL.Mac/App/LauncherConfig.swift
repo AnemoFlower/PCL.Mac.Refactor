@@ -59,6 +59,7 @@ class LauncherConfig: Codable {
     public var ignoreLauncherUpdates: Bool = false
     public var downloadSourcePolicy: DownloadSourcePolicy = .officialFirst
     public var homepageType: HomepageType = .empty
+    public var flags: Flags = .init()
     
     public init() {}
     
@@ -85,6 +86,7 @@ class LauncherConfig: Codable {
         self.ignoreLauncherUpdates = try container.decodeIfPresent(Bool.self, forKey: .ignoreLauncherUpdates) ?? false
         self.downloadSourcePolicy = try container.decodeIfPresent(DownloadSourcePolicy.self, forKey: .downloadSourcePolicy) ?? .officialFirst
         self.homepageType = try container.decodeIfPresent(HomepageType.self, forKey: .homepageType) ?? .empty
+        self.flags = try container.decodeIfPresent(Flags.self, forKey: .flags) ?? .init()
     }
     
     public func encode(to encoder: any Encoder) throws {
@@ -102,6 +104,7 @@ class LauncherConfig: Codable {
         try container.encode(ignoreLauncherUpdates, forKey: .ignoreLauncherUpdates)
         try container.encode(downloadSourcePolicy, forKey: .downloadSourcePolicy)
         try container.encode(homepageType, forKey: .homepageType)
+        try container.encode(flags, forKey: .flags)
     }
     
     public static func save(_ config: LauncherConfig = .shared, to url: URL = URLConstants.configURL) throws {
@@ -123,16 +126,30 @@ class LauncherConfig: Codable {
         case ignoreLauncherUpdates
         case downloadSourcePolicy
         case homepageType
+        case flags
     }
-}
-
-enum HomepageType: String, Codable, CustomStringConvertible {
-    case empty, demo
     
-    var description: String {
-        switch self {
-        case .empty: "空白"
-        case .demo: "[内置] 控件预览"
+    enum HomepageType: String, Codable, CustomStringConvertible {
+        case empty, demo
+        
+        var description: String {
+            switch self {
+            case .empty: "空白"
+            case .demo: "[内置] 控件预览"
+            }
+        }
+    }
+    
+    struct Flags: Codable {
+        var deduplicateLibraries: Bool = true
+        
+        init() {}
+        
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            if let deduplicateLibraries = try container.decodeIfPresent(Bool.self, forKey: .deduplicateLibraries) {
+                self.deduplicateLibraries = deduplicateLibraries
+            }
         }
     }
 }
