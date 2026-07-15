@@ -83,6 +83,12 @@ struct MyComboBox: View {
         .onAppear {
             checkedScale = checked ? 1 : 0
         }
+        .onChange(of: checked) { newValue in
+            guard canClick else { return }
+            withAnimation(scaleAnimation) {
+                checkedScale = newValue ? 1 : 0
+            }
+        }
     }
 }
 

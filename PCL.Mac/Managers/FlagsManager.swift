@@ -19,8 +19,8 @@ class FlagsManager: ObservableObject {
         } else {
             self.enabledFlags = defaultFlags
         }
-        for flag in self.enabledFlags {
-            applyChange(flag, enabled: true)
+        for flag in FeatureFlag.allCases {
+            applyChange(flag, enabled: isEnabled(flag))
         }
         debug("已开启的功能：\(self.enabledFlags)")
     }
@@ -57,7 +57,7 @@ class FlagsManager: ObservableObject {
     }
 }
 
-enum FeatureFlag: String, Codable {
+enum FeatureFlag: String, Codable, CaseIterable {
     case deduplicateLibraries
     case multiplayer
 }
